@@ -52,17 +52,15 @@ type TlsConfigSpec struct {
 }
 
 type GlobalConfigSpec struct {
-	ApiVersion string        `yaml:"apiVersion"`
-	Server     string        `yaml:"server"`
-	Username   string        `yaml:"username"`
-	Password   string        `yaml:"password"`
-	Tls        TlsConfigSpec `yaml:"tls"`
-	Grpc       GrpcConfigSpec
+	Server   string        `yaml:"server"`
+	Username string        `yaml:"username"`
+	Password string        `yaml:"password"`
+	Tls      TlsConfigSpec `yaml:"tls"`
+	Grpc     GrpcConfigSpec
 }
 
 var GlobalConfig = GlobalConfigSpec{
-	ApiVersion: "v1",
-	Server:     "localhost",
+	Server: "localhost",
 	Tls: TlsConfigSpec{
 		UseTls: false,
 	},
@@ -72,17 +70,16 @@ var GlobalConfig = GlobalConfigSpec{
 }
 
 var GlobalOptions struct {
-	Config     string `short:"c" long:"config" env:"CORDCONFIG" value-name:"FILE" default:"" description:"Location of client config file"`
-	Server     string `short:"s" long:"server" default:"" value-name:"SERVER:PORT" description:"IP/Host and port of XOS"`
-	Username   string `short:"u" long:"username" value-name:"USERNAME" default:"" description:"Username to authenticate with XOS"`
-	Password   string `short:"p" long:"password" value-name:"PASSWORD" default:"" description:"Password to authenticate with XOS"`
-	ApiVersion string `short:"a" long:"apiversion" description:"API version" value-name:"VERSION" choice:"v1" choice:"v2"`
-	Debug      bool   `short:"d" long:"debug" description:"Enable debug mode"`
-	UseTLS     bool   `long:"tls" description:"Use TLS"`
-	CACert     string `long:"tlscacert" value-name:"CA_CERT_FILE" description:"Trust certs signed only by this CA"`
-	Cert       string `long:"tlscert" value-name:"CERT_FILE" description:"Path to TLS vertificate file"`
-	Key        string `long:"tlskey" value-name:"KEY_FILE" description:"Path to TLS key file"`
-	Verify     bool   `long:"tlsverify" description:"Use TLS and verify the remote"`
+	Config   string `short:"c" long:"config" env:"CORDCONFIG" value-name:"FILE" default:"" description:"Location of client config file"`
+	Server   string `short:"s" long:"server" default:"" value-name:"SERVER:PORT" description:"IP/Host and port of XOS"`
+	Username string `short:"u" long:"username" value-name:"USERNAME" default:"" description:"Username to authenticate with XOS"`
+	Password string `short:"p" long:"password" value-name:"PASSWORD" default:"" description:"Password to authenticate with XOS"`
+	Debug    bool   `short:"d" long:"debug" description:"Enable debug mode"`
+	UseTLS   bool   `long:"tls" description:"Use TLS"`
+	CACert   string `long:"tlscacert" value-name:"CA_CERT_FILE" description:"Trust certs signed only by this CA"`
+	Cert     string `long:"tlscert" value-name:"CERT_FILE" description:"Path to TLS vertificate file"`
+	Key      string `long:"tlskey" value-name:"KEY_FILE" description:"Path to TLS key file"`
+	Verify   bool   `long:"tlsverify" description:"Use TLS and verify the remote"`
 }
 
 type OutputOptions struct {
@@ -111,8 +108,7 @@ type CommandResult struct {
 }
 
 type config struct {
-	ApiVersion string `yaml:"apiVersion"`
-	Server     string `yaml:"server"`
+	Server string `yaml:"server"`
 }
 
 func NewConnection() (*grpc.ClientConn, error) {
@@ -143,9 +139,6 @@ func NewConnection() (*grpc.ClientConn, error) {
 	// Override from command line
 	if GlobalOptions.Server != "" {
 		GlobalConfig.Server = GlobalOptions.Server
-	}
-	if GlobalOptions.ApiVersion != "" {
-		GlobalConfig.ApiVersion = GlobalOptions.ApiVersion
 	}
 	if GlobalOptions.Username != "" {
 		GlobalConfig.Username = GlobalOptions.Username

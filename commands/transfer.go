@@ -17,16 +17,9 @@
 package commands
 
 import (
-	"context"
 	"errors"
-	"fmt"
-	"github.com/fullstorydev/grpcurl"
-	"github.com/golang/protobuf/proto"
 	flags "github.com/jessevdk/go-flags"
-	"github.com/jhump/protoreflect/dynamic"
 	"github.com/opencord/cordctl/format"
-	"io"
-	"os"
 	"strings"
 )
 
@@ -69,69 +62,11 @@ func RegisterTransferCommands(parser *flags.Parser) {
 	parser.AddCommand("transfer", "file transfer commands", "Commands to transfer files to and from XOS", &transferOpts)
 }
 
-/* Handlers for streaming upload and download */
-
-type DownloadHandler struct {
-	RpcEventHandler
-	f      *os.File
-	chunks int
-	bytes  int
-	status string
-}
-
-type UploadHandler struct {
-	RpcEventHandler
-	chunksize int
-	f         *os.File
-	uri       string
-}
-
-func (h *DownloadHandler) OnReceiveResponse(m proto.Message) {
-	d, err := dynamic.AsDynamicMessage(m)
-	if err != nil {
-		h.status = "ERROR"
-		// TODO(smbaker): How to raise an exception?
-		return
-	}
-	chunk := d.GetFieldByName("chunk").(string)
-	h.f.Write([]byte(chunk))
-	h.chunks += 1
-	h.bytes += len(chunk)
-}
-
-func (h *UploadHandler) GetParams(msg proto.Message) error {
-	dmsg, err := dynamic.AsDynamicMessage(msg)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("streamer, MessageName: %s\n", dmsg.XXX_MessageName())
-
-	block := make([]byte, h.chunksize)
-	bytes_read, err := h.f.Read(block)
-
-	if err == io.EOF {
-		h.f.Close()
-		fmt.Print("EOF\n")
-		return err
-	}
-
-	if err != nil {
-		fmt.Print("ERROR!\n")
-		return err
-	}
-
-	dmsg.TrySetFieldByName("uri", h.uri)
-	dmsg.TrySetFieldByName("chunk", string(block[:bytes_read]))
-
-	return nil
-}
-
 /* Command processors */
 
 func (options *TransferUpload) Execute(args []string) error {
 
-	conn, err := NewConnection()
+	conn, descriptor, err := InitReflectionClient()
 	if err != nil {
 		return err
 	}
@@ -140,31 +75,15 @@ func (options *TransferUpload) Execute(args []string) error {
 	local_name := options.Args.LocalFileName
 	uri := options.Args.URI
 
-	descriptor, method, err := GetReflectionMethod(conn, "xos.filetransfer/Upload")
-	if err != nil {
-		return err
+	if IsFileUri(local_name) {
+		return errors.New("local_name argument should not be a uri")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
-	defer cancel()
-
-	headers := GenerateHeaders()
-
-	f, err := os.Open(local_name)
-	if err != nil {
-		return err
+	if !IsFileUri(uri) {
+		return errors.New("uri argument should be a file:// uri")
 	}
 
-	h := &UploadHandler{uri: uri, f: f, chunksize: options.ChunkSize}
-
-	err = grpcurl.InvokeRPC(ctx, descriptor, conn, method, headers, h, h.GetParams)
-	if err != nil {
-		return err
-	}
-	d, err := dynamic.AsDynamicMessage(h.Response)
-	if err != nil {
-		return err
-	}
+	d, err := UploadFile(conn, descriptor, local_name, uri, options.ChunkSize)
 
 	outputFormat := CharReplacer.Replace(options.Format)
 	if outputFormat == "" {
@@ -196,8 +115,7 @@ func IsFileUri(s string) bool {
 }
 
 func (options *TransferDownload) Execute(args []string) error {
-
-	conn, err := NewConnection()
+	conn, descriptor, err := InitReflectionClient()
 	if err != nil {
 		return err
 	}
@@ -214,34 +132,7 @@ func (options *TransferDownload) Execute(args []string) error {
 		return errors.New("uri argument should be a file:// uri")
 	}
 
-	descriptor, method, err := GetReflectionMethod(conn, "xos.filetransfer/Download")
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
-	defer cancel()
-
-	headers := GenerateHeaders()
-
-	f, err := os.Create(local_name)
-	if err != nil {
-		return err
-	}
-
-	dm := make(map[string]interface{})
-	dm["uri"] = uri
-
-	h := &DownloadHandler{
-		RpcEventHandler: RpcEventHandler{
-			Fields: map[string]map[string]interface{}{"xos.FileRequest": dm},
-		},
-		f:      f,
-		chunks: 0,
-		bytes:  0,
-		status: "SUCCESS"}
-
-	err = grpcurl.InvokeRPC(ctx, descriptor, conn, method, headers, h, h.GetParams)
+	h, err := DownloadFile(conn, descriptor, uri, local_name)
 	if err != nil {
 		return err
 	}

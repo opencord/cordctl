@@ -23,7 +23,7 @@ build: dependencies
 	go build $(LDFLAGS) cmd/cordctl.go
 
 dependencies:
-	dep ensure
+	[ -d "vendor" ] || dep ensure
 
 lint: dependencies
 	find $(GOPATH)/src/github.com/opencord/cordctl -name "*.go" -not -path '$(GOPATH)/src/github.com/opencord/cordctl/vendor/*' | xargs gofmt -l
@@ -37,3 +37,8 @@ test: dependencies
 	go-junit-report < ./tests/results/go-test-results.out > ./tests/results/go-test-results.xml ;\
 	gocover-cobertura < ./tests/results/go-test-coverage.out > ./tests/results/go-test-coverage.xml ;\
 	exit $$RETURN
+
+clean:
+	rm -f cordctl
+	rm -rf vendor
+	rm -f Gopkg.lock
