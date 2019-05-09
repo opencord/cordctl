@@ -1,0 +1,84 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8953337b_3841d105",
+        "filename": "commands/models.go",
+        "patchSetId": 19
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2019-05-09T17:27:02Z",
+      "side": 1,
+      "message": "see strings.Builder, just a more efficient way to construct a string",
+      "range": {
+        "startLine": 140,
+        "startChar": 1,
+        "endLine": 140,
+        "endChar": 15
+      },
+      "revId": "0f1541df8e785a93db38c94c9dffd884fdd160d8",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4e9d94fb_f70ed720",
+        "filename": "commands/services.go",
+        "patchSetId": 19
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2019-05-09T17:27:02Z",
+      "side": 1,
+      "message": "delete?",
+      "range": {
+        "startLine": 21,
+        "startChar": 6,
+        "endLine": 21,
+        "endChar": 9
+      },
+      "revId": "0f1541df8e785a93db38c94c9dffd884fdd160d8",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "eb233e22_81e1b3cf",
+        "filename": "commands/services.go",
+        "patchSetId": 19
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2019-05-09T17:27:02Z",
+      "side": 1,
+      "message": "delete ?",
+      "revId": "0f1541df8e785a93db38c94c9dffd884fdd160d8",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5275b600_26a9f14d",
+        "filename": "commands/services.go",
+        "patchSetId": 19
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2019-05-09T17:27:02Z",
+      "side": 1,
+      "message": "i have started specifing `json` names for the fields using struct tags so in json it is all lowercase.",
+      "revId": "0f1541df8e785a93db38c94c9dffd884fdd160d8",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    }
+  ]
+}
