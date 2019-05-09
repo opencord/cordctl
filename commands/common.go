@@ -16,7 +16,15 @@
 package commands
 
 import (
+	//"fmt"
 	b64 "encoding/base64"
+	"errors"
+	"github.com/fullstorydev/grpcurl"
+	"github.com/jhump/protoreflect/grpcreflect"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	reflectpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
+	"strings"
 )
 
 func GenerateHeaders() []string {
@@ -25,4 +33,57 @@ func GenerateHeaders() []string {
 	sEnc := b64.StdEncoding.EncodeToString([]byte(username + ":" + password))
 	headers := []string{"authorization: basic " + sEnc}
 	return headers
+}
+
+func GetModelNames(source grpcurl.DescriptorSource) (map[string]bool, error) {
+	models := make(map[string]bool)
+	methods, err := grpcurl.ListMethods(source, "xos.xos")
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, method := range methods {
+		if strings.HasPrefix(method, "xos.xos.Get") {
+			models[method[11:]] = true
+		}
+	}
+
+	return models, nil
+}
+
+func CheckModelName(source grpcurl.DescriptorSource, name string) error {
+	models, err := GetModelNames(source)
+	if err != nil {
+		return err
+	}
+	_, present := models[name]
+	if !present {
+		return errors.New("Model " + name + " does not exist. Use `cordctl models available` to get a list of available models")
+	}
+	return nil
+}
+
+func InitReflectionClient() (*grpc.ClientConn, grpcurl.DescriptorSource, error) {
+	conn, err := NewConnection()
+	if err != nil {
+		return nil, nil, err
+	}
+	//defer conn.Close()
+
+	refClient := grpcreflect.NewClient(context.Background(), reflectpb.NewServerReflectionClient(conn))
+	defer refClient.Reset()
+
+	descriptor := grpcurl.DescriptorSourceFromServer(context.Background(), refClient)
+
+	return conn, descriptor, nil
+}
+
+// A makeshift substitute for C's Ternary operator
+func Ternary_uint32(condition bool, value_true uint32, value_false uint32) uint32 {
+	if condition {
+		return value_true
+	} else {
+		return value_false
+	}
 }
