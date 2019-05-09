@@ -17,6 +17,12 @@ package commands
 
 import (
 	b64 "encoding/base64"
+	"fmt"
+	"github.com/fullstorydev/grpcurl"
+	"github.com/jhump/protoreflect/grpcreflect"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	reflectpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 )
 
 func GenerateHeaders() []string {
@@ -25,4 +31,34 @@ func GenerateHeaders() []string {
 	sEnc := b64.StdEncoding.EncodeToString([]byte(username + ":" + password))
 	headers := []string{"authorization: basic " + sEnc}
 	return headers
+}
+
+func InitReflectionClient() (*grpc.ClientConn, grpcurl.DescriptorSource, error) {
+	conn, err := NewConnection()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	refClient := grpcreflect.NewClient(context.Background(), reflectpb.NewServerReflectionClient(conn))
+	defer refClient.Reset()
+
+	descriptor := grpcurl.DescriptorSourceFromServer(context.Background(), refClient)
+
+	return conn, descriptor, nil
+}
+
+// A makeshift substitute for C's Ternary operator
+func Ternary_uint32(condition bool, value_true uint32, value_false uint32) uint32 {
+	if condition {
+		return value_true
+	} else {
+		return value_false
+	}
+}
+
+// call printf only if visible is True
+func conditional_printf(visible bool, format string, args ...interface{}) {
+	if visible {
+		fmt.Printf(format, args...)
+	}
 }

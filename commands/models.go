@@ -20,28 +20,34 @@ import (
 	"context"
 	"fmt"
 	"github.com/fullstorydev/grpcurl"
-	pbdescriptor "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/jhump/protoreflect/dynamic"
 	"github.com/opencord/cordctl/format"
+	"sort"
 	"strings"
 )
 
 const (
-	DEFAULT_MODEL_FORMAT = "table{{ .id }}\t{{ .name }}"
+	DEFAULT_MODEL_AVAILABLE_FORMAT = "{{ . }}"
 )
 
 type ModelList struct {
 	OutputOptions
-	ShowHidden   bool `long:"showhidden" description:"Show hidden fields in default output"`
-	ShowFeedback bool `long:"showfeedback" description:"Show feedback fields in default output"`
-	Args         struct {
+	ShowHidden      bool `long:"showhidden" description:"Show hidden fields in default output"`
+	ShowFeedback    bool `long:"showfeedback" description:"Show feedback fields in default output"`
+	ShowBookkeeping bool `long:"showbookkeeping" description:"Show bookkeeping fields in default output"`
+	Args            struct {
 		ModelName string
 	} `positional-args:"yes" required:"yes"`
 }
 
+type ModelAvailable struct {
+	OutputOptions
+}
+
 type ModelOpts struct {
-	List ModelList `command:"list"`
+	List      ModelList      `command:"list"`
+	Available ModelAvailable `command:"available"`
 }
 
 var modelOpts = ModelOpts{}
@@ -50,22 +56,56 @@ func RegisterModelCommands(parser *flags.Parser) {
 	parser.AddCommand("model", "model commands", "Commands to query and manipulate XOS models", &modelOpts)
 }
 
-func (options *ModelList) Execute(args []string) error {
-
-	conn, err := NewConnection()
+func (options *ModelAvailable) Execute(args []string) error {
+	conn, descriptor, err := InitReflectionClient()
 	if err != nil {
 		return err
 	}
+
 	defer conn.Close()
 
-	// TODO: Validate ModelName
-
-	method_name := "xos.xos/List" + options.Args.ModelName
-
-	descriptor, method, err := GetReflectionMethod(conn, method_name)
+	models, err := GetModelNames(descriptor)
 	if err != nil {
 		return err
 	}
+
+	model_names := []string{}
+	for k := range models {
+		model_names = append(model_names, k)
+	}
+
+	sort.Strings(model_names)
+
+	outputFormat := CharReplacer.Replace(options.Format)
+	if outputFormat == "" {
+		outputFormat = DEFAULT_MODEL_AVAILABLE_FORMAT
+	}
+
+	result := CommandResult{
+		Format:   format.Format(outputFormat),
+		OutputAs: toOutputType(options.OutputAs),
+		Data:     model_names,
+	}
+
+	GenerateOutput(&result)
+
+	return nil
+}
+
+func (options *ModelList) Execute(args []string) error {
+	conn, descriptor, err := InitReflectionClient()
+	if err != nil {
+		return err
+	}
+
+	defer conn.Close()
+
+	err = CheckModelName(descriptor, options.Args.ModelName)
+	if err != nil {
+		return err
+	}
+
+	method := "xos.xos/List" + options.Args.ModelName
 
 	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
 	defer cancel()
@@ -99,7 +139,6 @@ func (options *ModelList) Execute(args []string) error {
 		data[i] = make(map[string]interface{})
 		for _, field_desc := range val.GetKnownFields() {
 			field_name := field_desc.GetName()
-			field_type := field_desc.GetType()
 
 			isGuiHidden := strings.Contains(field_desc.GetFieldOptions().String(), "1005:1")
 			isFeedback := strings.Contains(field_desc.GetFieldOptions().String(), "1006:1")
@@ -113,7 +152,7 @@ func (options *ModelList) Execute(args []string) error {
 				continue
 			}
 
-			if isBookkeeping {
+			if isBookkeeping && (!options.ShowBookkeeping) {
 				continue
 			}
 
@@ -121,16 +160,7 @@ func (options *ModelList) Execute(args []string) error {
 				continue
 			}
 
-			switch field_type {
-			case pbdescriptor.FieldDescriptorProto_TYPE_STRING:
-				data[i][field_name] = val.GetFieldByName(field_name).(string)
-			case pbdescriptor.FieldDescriptorProto_TYPE_INT32:
-				data[i][field_name] = val.GetFieldByName(field_name).(int32)
-			case pbdescriptor.FieldDescriptorProto_TYPE_BOOL:
-				data[i][field_name] = val.GetFieldByName(field_name).(bool)
-				//				case pbdescriptor.FieldDescriptorProto_TYPE_DOUBLE:
-				//					data[i][field_name] = val.GetFieldByName(field_name).(double)
-			}
+			data[i][field_name] = val.GetFieldByName(field_name)
 
 			field_names[field_name] = true
 		}
