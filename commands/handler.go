@@ -58,11 +58,13 @@ func (h *RpcEventHandler) GetParams(msg proto.Message) error {
 	//fmt.Printf("MessageName: %s\n", dmsg.XXX_MessageName())
 
 	if h.Fields == nil || len(h.Fields) == 0 {
+		//fmt.Println("EOF")
 		return io.EOF
 	}
 
 	fields, ok := h.Fields[dmsg.XXX_MessageName()]
 	if !ok {
+		//fmt.Println("nil")
 		return nil
 	}
 

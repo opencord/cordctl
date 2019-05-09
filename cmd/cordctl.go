@@ -30,6 +30,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	commands.RegisterBackupCommands(parser)
 	commands.RegisterModelCommands(parser)
 	commands.RegisterServiceCommands(parser)
 	commands.RegisterTransferCommands(parser)
