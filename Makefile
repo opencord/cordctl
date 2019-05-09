@@ -23,7 +23,7 @@ build: dependencies
 	go build $(LDFLAGS) cmd/cordctl.go
 
 dependencies:
-	dep ensure
+	stat vendor > /dev/null || dep ensure
 
 lint: dependencies
 	find $(GOPATH)/src/github.com/opencord/cordctl -name "*.go" -not -path '$(GOPATH)/src/github.com/opencord/cordctl/vendor/*' | xargs gofmt -l
