@@ -111,16 +111,12 @@ type config struct {
 	Server string `yaml:"server"`
 }
 
-func NewConnection() (*grpc.ClientConn, error) {
+func ProcessGlobalOptions() {
 	if len(GlobalOptions.Config) == 0 {
-		home := os.Getenv("HOME")
-		// TODO: Replace after Jenkins updated to go 1.12
-		/*
-			home, err := os.UserHomeDir()
-			if err != nil {
-				log.Printf("Unable to discover they users home directory: %s\n", err)
-			}
-		*/
+		home, err := os.UserHomeDir()
+		if err != nil {
+			log.Printf("Unable to discover the users home directory: %s\n", err)
+		}
 		GlobalOptions.Config = fmt.Sprintf("%s/.cord/config", home)
 	}
 
@@ -147,6 +143,19 @@ func NewConnection() (*grpc.ClientConn, error) {
 		GlobalConfig.Password = GlobalOptions.Password
 	}
 
+	if GlobalConfig.Server == "" {
+		log.Fatal("Server is not set. Please update config file or use the -s option")
+	}
+	if GlobalConfig.Username == "" {
+		log.Fatal("Username is not set. Please update config file or use the -u option")
+	}
+	if GlobalConfig.Password == "" {
+		log.Fatal("Password is not set. Please update config file or use the -p option")
+	}
+}
+
+func NewConnection() (*grpc.ClientConn, error) {
+	ProcessGlobalOptions()
 	return grpc.Dial(GlobalConfig.Server, grpc.WithInsecure())
 }
 
