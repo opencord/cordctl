@@ -78,6 +78,7 @@ func (options *BackupCreate) Execute(args []string) error {
 	local_name := options.Args.LocalFileName
 
 	// STEP 1: Create backup operation
+
 	backupop := make(map[string]interface{})
 	backupop["operation"] = "create"
 	err = CreateModel(conn, descriptor, "BackupOperation", backupop)
@@ -88,6 +89,7 @@ func (options *BackupCreate) Execute(args []string) error {
 	conditional_printf(!options.Quiet, "Waiting for sync ")
 
 	// STEP 2: Wait for the operation to complete
+
 	flags := GM_UNTIL_ENACTED | GM_UNTIL_FOUND | Ternary_uint32(options.Quiet, GM_QUIET, 0)
 	conn, completed_backupop, err := GetModelWithRetry(conn, descriptor, "BackupOperation", backupop["id"].(int32), flags)
 	if err != nil {
@@ -127,7 +129,16 @@ func (options *BackupCreate) Execute(args []string) error {
 		return err
 	}
 
-	// STEP 5: Show results
+	// STEP 5: Verify checksum
+
+	if completed_backupfile.GetFieldByName("checksum").(string) != h.GetChecksum() {
+		return fmt.Errorf("Checksum mismatch, received=%s, expected=%s",
+			h.GetChecksum(),
+			completed_backupfile.GetFieldByName("checksum").(string))
+	}
+
+	// STEP 6: Show results
+
 	outputFormat := CharReplacer.Replace(options.Format)
 	if outputFormat == "" {
 		outputFormat = DEFAULT_BACKUP_FORMAT
@@ -140,7 +151,7 @@ func (options *BackupCreate) Execute(args []string) error {
 	data[0].Chunks = h.chunks
 	data[0].Bytes = h.bytes
 	data[0].Status = h.status
-	data[0].Checksum = fmt.Sprintf("sha1:%x", h.hash.Sum(nil))
+	data[0].Checksum = h.GetChecksum()
 
 	result := CommandResult{
 		Format:   format.Format(outputFormat),
@@ -166,7 +177,7 @@ func (options *BackupRestore) Execute(args []string) error {
 
 	// STEP 1: Upload the file
 
-	upload_result, err := UploadFile(conn, descriptor, local_name, uri, 65536)
+	h, upload_result, err := UploadFile(conn, descriptor, local_name, uri, 65536)
 	if err != nil {
 		return err
 	}
@@ -176,10 +187,20 @@ func (options *BackupRestore) Execute(args []string) error {
 		return errors.New("Upload status was " + upload_status)
 	}
 
+	// STEP 2: Verify checksum
+
+	if upload_result.GetFieldByName("checksum").(string) != h.GetChecksum() {
+		return fmt.Errorf("Checksum mismatch, expected=%s, received=%s",
+			h.GetChecksum(),
+			upload_result.GetFieldByName("checksum").(string))
+	}
+
 	// STEP 2: Create a BackupFile object
+
 	backupfile := make(map[string]interface{})
 	backupfile["name"] = remote_name
 	backupfile["uri"] = uri
+	backupfile["checksum"] = h.GetChecksum()
 	err = CreateModel(conn, descriptor, "BackupFile", backupfile)
 	if err != nil {
 		return err
@@ -187,6 +208,7 @@ func (options *BackupRestore) Execute(args []string) error {
 	conditional_printf(!options.Quiet, "Created backup file %d\n", backupfile["id"])
 
 	// STEP 3: Create a BackupOperation object
+
 	backupop := make(map[string]interface{})
 	backupop["operation"] = "restore"
 	backupop["file_id"] = backupfile["id"]
@@ -199,6 +221,7 @@ func (options *BackupRestore) Execute(args []string) error {
 	conditional_printf(!options.Quiet, "Waiting for completion ")
 
 	// STEP 4: Wait for completion
+
 	flags := GM_UNTIL_ENACTED | GM_UNTIL_FOUND | GM_UNTIL_STATUS | Ternary_uint32(options.Quiet, GM_QUIET, 0)
 	conn, completed_backupop, err := FindModelWithRetry(conn, descriptor, "BackupOperation", "uuid", backupop["uuid"].(string), flags)
 	if err != nil {
@@ -210,6 +233,7 @@ func (options *BackupRestore) Execute(args []string) error {
 	conditional_printf(!options.Quiet, "\n")
 
 	// STEP 5: Show results
+
 	outputFormat := CharReplacer.Replace(options.Format)
 	if outputFormat == "" {
 		outputFormat = DEFAULT_BACKUP_FORMAT

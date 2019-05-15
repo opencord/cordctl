@@ -18,7 +18,8 @@ package commands
 
 import (
 	"context"
-	"crypto/sha1"
+	"crypto/sha256"
+	"fmt"
 	"github.com/fullstorydev/grpcurl"
 	"github.com/golang/protobuf/proto"
 	"github.com/jhump/protoreflect/dynamic"
@@ -44,6 +45,7 @@ type UploadHandler struct {
 	chunksize int
 	f         *os.File
 	uri       string
+	hash      hash.Hash
 }
 
 func (h *DownloadHandler) OnReceiveResponse(m proto.Message) {
@@ -58,6 +60,10 @@ func (h *DownloadHandler) OnReceiveResponse(m proto.Message) {
 	h.f.Write([]byte(chunk))
 	h.chunks += 1
 	h.bytes += len(chunk)
+}
+
+func (h *DownloadHandler) GetChecksum() string {
+	return fmt.Sprintf("sha256:%x", h.hash.Sum(nil))
 }
 
 func (h *UploadHandler) GetParams(msg proto.Message) error {
@@ -82,13 +88,20 @@ func (h *UploadHandler) GetParams(msg proto.Message) error {
 		return err
 	}
 
+	chunk := string(block[:bytes_read])
+	io.WriteString(h.hash, chunk)
+
 	dmsg.TrySetFieldByName("uri", h.uri)
-	dmsg.TrySetFieldByName("chunk", string(block[:bytes_read]))
+	dmsg.TrySetFieldByName("chunk", chunk)
 
 	return nil
 }
 
-func UploadFile(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, local_name string, uri string, chunkSize int) (*dynamic.Message, error) {
+func (h *UploadHandler) GetChecksum() string {
+	return fmt.Sprintf("sha256:%x", h.hash.Sum(nil))
+}
+
+func UploadFile(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, local_name string, uri string, chunkSize int) (*UploadHandler, *dynamic.Message, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
 	defer cancel()
 
@@ -96,21 +109,24 @@ func UploadFile(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, loca
 
 	f, err := os.Open(local_name)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	h := &UploadHandler{uri: uri, f: f, chunksize: chunkSize}
+	h := &UploadHandler{uri: uri,
+		f:         f,
+		chunksize: chunkSize,
+		hash:      sha256.New()}
 
 	err = grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.filetransfer/Upload", headers, h, h.GetParams)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	d, err := dynamic.AsDynamicMessage(h.Response)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return d, err
+	return h, d, err
 }
 
 func DownloadFile(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, uri string, local_name string) (*DownloadHandler, error) {
@@ -132,7 +148,7 @@ func DownloadFile(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, ur
 			Fields: map[string]map[string]interface{}{"xos.FileRequest": dm},
 		},
 		f:      f,
-		hash:   sha1.New(),
+		hash:   sha256.New(),
 		status: "SUCCESS"}
 
 	err = grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.filetransfer/Download", headers, h, h.GetParams)

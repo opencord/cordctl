@@ -18,6 +18,7 @@ package commands
 
 import (
 	"errors"
+	"fmt"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/opencord/cordctl/format"
 	"strings"
@@ -83,7 +84,13 @@ func (options *TransferUpload) Execute(args []string) error {
 		return errors.New("uri argument should be a file:// uri")
 	}
 
-	d, err := UploadFile(conn, descriptor, local_name, uri, options.ChunkSize)
+	h, upload_result, err := UploadFile(conn, descriptor, local_name, uri, options.ChunkSize)
+
+	if upload_result.GetFieldByName("checksum").(string) != h.GetChecksum() {
+		return fmt.Errorf("Checksum mismatch, expected=%s, received=%s",
+			h.GetChecksum(),
+			upload_result.GetFieldByName("checksum").(string))
+	}
 
 	outputFormat := CharReplacer.Replace(options.Format)
 	if outputFormat == "" {
@@ -94,10 +101,10 @@ func (options *TransferUpload) Execute(args []string) error {
 	}
 
 	data := make([]TransferOutput, 1)
-	data[0].Checksum = d.GetFieldByName("checksum").(string)
-	data[0].Chunks = int(d.GetFieldByName("chunks_received").(int32))
-	data[0].Bytes = int(d.GetFieldByName("bytes_received").(int32))
-	data[0].Status = GetEnumValue(d, "status")
+	data[0].Checksum = upload_result.GetFieldByName("checksum").(string)
+	data[0].Chunks = int(upload_result.GetFieldByName("chunks_received").(int32))
+	data[0].Bytes = int(upload_result.GetFieldByName("bytes_received").(int32))
+	data[0].Status = GetEnumValue(upload_result, "status")
 
 	result := CommandResult{
 		Format:   format.Format(outputFormat),
