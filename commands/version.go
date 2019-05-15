@@ -29,6 +29,7 @@ type VersionDetails struct {
 	Version   string `json:"version"`
 	GoVersion string `json:"goversion"`
 	GitCommit string `json:"gitcommit"`
+	GitDirty  string `json:"gitdirty"`
 	BuildTime string `json:"buildtime"`
 	Os        string `json:"os"`
 	Arch      string `json:"arch"`
@@ -59,6 +60,7 @@ var versionInfo = VersionOutput{
 		Version:   version.Version,
 		GoVersion: version.GoVersion,
 		GitCommit: version.GitCommit,
+		GitDirty:  version.GitDirty,
 		Os:        version.Os,
 		Arch:      version.Arch,
 		BuildTime: version.BuildTime,
@@ -81,6 +83,7 @@ const DefaultFormat = `Client:
  Version         {{.Client.Version}}
  Go version:     {{.Client.GoVersion}}
  Git commit:     {{.Client.GitCommit}}
+ Git dirty:      {{.Client.GitDirty}}
  Built:          {{.Client.BuildTime}}
  OS/Arch:        {{.Client.Os}}/{{.Client.Arch}}
 
