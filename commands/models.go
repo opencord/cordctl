@@ -17,9 +17,7 @@
 package commands
 
 import (
-	"context"
 	"fmt"
-	"github.com/fullstorydev/grpcurl"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/jhump/protoreflect/dynamic"
 	"github.com/opencord/cordctl/format"
@@ -35,9 +33,10 @@ type ModelNameString string
 
 type ModelList struct {
 	OutputOptions
-	ShowHidden      bool `long:"showhidden" description:"Show hidden fields in default output"`
-	ShowFeedback    bool `long:"showfeedback" description:"Show feedback fields in default output"`
-	ShowBookkeeping bool `long:"showbookkeeping" description:"Show bookkeeping fields in default output"`
+	ShowHidden      bool   `long:"showhidden" description:"Show hidden fields in default output"`
+	ShowFeedback    bool   `long:"showfeedback" description:"Show feedback fields in default output"`
+	ShowBookkeeping bool   `long:"showbookkeeping" description:"Show bookkeeping fields in default output"`
+	Filter          string `long:"filter" description:"Comma-separated list of filters"`
 	Args            struct {
 		ModelName ModelNameString
 	} `positional-args:"yes" required:"yes"`
@@ -107,37 +106,25 @@ func (options *ModelList) Execute(args []string) error {
 		return err
 	}
 
-	method := "xos.xos/List" + string(options.Args.ModelName)
+	var models []*dynamic.Message
 
-	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
-	defer cancel()
-
-	headers := GenerateHeaders()
-
-	h := &RpcEventHandler{}
-	err = grpcurl.InvokeRPC(ctx, descriptor, conn, method, headers, h, h.GetParams)
+	queries, err := CommaSeparatedQueryToMap(options.Filter)
 	if err != nil {
 		return err
 	}
 
-	if h.Status != nil && h.Status.Err() != nil {
-		return h.Status.Err()
+	if len(queries) == 0 {
+		models, err = ListModels(conn, descriptor, string(options.Args.ModelName))
+	} else {
+		models, err = FilterModels(conn, descriptor, string(options.Args.ModelName), queries)
 	}
-
-	d, err := dynamic.AsDynamicMessage(h.Response)
-	if err != nil {
-		return err
-	}
-
-	items, err := d.TryGetFieldByName("items")
 	if err != nil {
 		return err
 	}
 
 	field_names := make(map[string]bool)
-	data := make([]map[string]interface{}, len(items.([]interface{})))
-	for i, item := range items.([]interface{}) {
-		val := item.(*dynamic.Message)
+	data := make([]map[string]interface{}, len(models))
+	for i, val := range models {
 		data[i] = make(map[string]interface{})
 		for _, field_desc := range val.GetKnownFields() {
 			field_name := field_desc.GetName()

@@ -21,16 +21,133 @@ import (
 	"errors"
 	"fmt"
 	"github.com/fullstorydev/grpcurl"
+	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic"
 	"google.golang.org/grpc"
+	"io"
+	"strconv"
 	"strings"
 	"time"
 )
 
+// Flags for calling the *WithRetry methods
 const GM_QUIET = 1
 const GM_UNTIL_FOUND = 2
 const GM_UNTIL_ENACTED = 4
 const GM_UNTIL_STATUS = 8
+
+type QueryEventHandler struct {
+	RpcEventHandler
+	Elements map[string]string
+	Model    *desc.MessageDescriptor
+	Kind     string
+	EOF      bool
+}
+
+// Separate the operator from the query value.
+// For example,
+//    "==foo"  --> "EQUAL", "foo"
+func DecodeOperator(query string) (string, string, bool, error) {
+	if strings.HasPrefix(query, "!=") {
+		return query[2:], "EQUAL", true, nil
+	} else if strings.HasPrefix(query, "==") {
+		return "", "", false, errors.New("Operator == is now allowed. Suggest using = instead.")
+	} else if strings.HasPrefix(query, "=") {
+		return query[1:], "EQUAL", false, nil
+	} else if strings.HasPrefix(query, ">=") {
+		return query[2:], "GREATER_THAN_OR_EQUAL", false, nil
+	} else if strings.HasPrefix(query, ">") {
+		return query[1:], "GREATER_THAN", false, nil
+	} else if strings.HasPrefix(query, "<=") {
+		return query[2:], "LESS_THAN_OR_EQUAL", false, nil
+	} else if strings.HasPrefix(query, "<") {
+		return query[1:], "LESS_THAN", false, nil
+	} else {
+		return query, "EQUAL", false, nil
+	}
+}
+
+// Generate the parameters for Query messages.
+func (h *QueryEventHandler) GetParams(msg proto.Message) error {
+	dmsg, err := dynamic.AsDynamicMessage(msg)
+	if err != nil {
+		return err
+	}
+
+	//fmt.Printf("MessageName: %s\n", dmsg.XXX_MessageName())
+
+	if h.EOF {
+		return io.EOF
+	}
+
+	// Get the MessageType for the `elements` field
+	md := dmsg.GetMessageDescriptor()
+	elements_fld := md.FindFieldByName("elements")
+	elements_mt := elements_fld.GetMessageType()
+
+	for field_name, element := range h.Elements {
+		value, operator, invert, err := DecodeOperator(element)
+		if err != nil {
+			return err
+		}
+
+		nm := dynamic.NewMessage(elements_mt)
+
+		field_type := h.Model.FindFieldByName(field_name).GetType()
+		if field_type == descriptor.FieldDescriptorProto_TYPE_INT32 {
+			i, _ := strconv.ParseInt(value, 10, 32)
+			nm.SetFieldByName("iValue", int32(i))
+		} else if field_type == descriptor.FieldDescriptorProto_TYPE_UINT32 {
+			i, _ := strconv.ParseInt(value, 10, 32)
+			nm.SetFieldByName("iValue", uint32(i))
+		} else {
+			nm.SetFieldByName("sValue", value)
+		}
+
+		nm.SetFieldByName("name", field_name)
+		nm.SetFieldByName("invert", invert)
+		SetEnumValue(nm, "operator", operator)
+		dmsg.AddRepeatedFieldByName("elements", nm)
+	}
+
+	SetEnumValue(dmsg, "kind", h.Kind)
+
+	h.EOF = true
+
+	return nil
+}
+
+// Take a string list of queries and turns it into a map of queries
+func QueryStringsToMap(query_args []string) (map[string]string, error) {
+	queries := make(map[string]string)
+	for _, query_str := range query_args {
+		query_str := strings.Trim(query_str, " ")
+		operator_pos := -1
+		for i, ch := range query_str {
+			if (ch == '!') || (ch == '=') || (ch == '>') || (ch == '<') {
+				operator_pos = i
+				break
+			}
+		}
+		if operator_pos == -1 {
+			return nil, fmt.Errorf("Illegal query string %s", query_str)
+		}
+		queries[query_str[:operator_pos]] = query_str[operator_pos:]
+	}
+	return queries, nil
+}
+
+// Take a string of comma-separated queries and turn it into a map of queries
+func CommaSeparatedQueryToMap(query_str string) (map[string]string, error) {
+	if query_str == "" {
+		return nil, nil
+	}
+
+	query_strings := strings.Split(query_str, ",")
+	return QueryStringsToMap(query_strings)
+}
 
 // Return a list of all available model names
 func GetModelNames(source grpcurl.DescriptorSource) (map[string]bool, error) {
@@ -181,14 +298,20 @@ func GetModelWithRetry(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSourc
 	}
 }
 
-// Get a model from XOS given a fieldName/fieldValue
-func FindModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, fieldName string, fieldValue string) (*dynamic.Message, error) {
+func ItemsToDynamicMessageList(items interface{}) []*dynamic.Message {
+	result := make([]*dynamic.Message, len(items.([]interface{})))
+	for i, item := range items.([]interface{}) {
+		result[i] = item.(*dynamic.Message)
+	}
+	return result
+}
+
+// List all objects of a given model
+func ListModels(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string) ([]*dynamic.Message, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
 	defer cancel()
 
 	headers := GenerateHeaders()
-
-	// TODO(smbaker): Implement filter the right way
 
 	h := &RpcEventHandler{}
 	err := grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.xos.List"+modelName, headers, h, h.GetParams)
@@ -210,20 +333,74 @@ func FindModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, model
 		return nil, err
 	}
 
-	for _, item := range items.([]interface{}) {
-		val := item.(*dynamic.Message)
+	return ItemsToDynamicMessageList(items), nil
+}
 
-		if val.GetFieldByName(fieldName).(string) == fieldValue {
-			return val, nil
-		}
+// Filter models based on field values
+//   queries is a map of <field_name> to <operator><query>
+//   For example,
+//     map[string]string{"name": "==mysite"}
+func FilterModels(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, queries map[string]string) ([]*dynamic.Message, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+	defer cancel()
 
+	headers := GenerateHeaders()
+
+	model_descriptor, err := descriptor.FindSymbol("xos." + modelName)
+	if err != nil {
+		return nil, err
+	}
+	model_md, ok := model_descriptor.(*desc.MessageDescriptor)
+	if !ok {
+		return nil, errors.New("Failed to convert model to a messagedescriptor")
 	}
 
-	return nil, errors.New("rpc error: code = NotFound")
+	h := &QueryEventHandler{
+		RpcEventHandler: RpcEventHandler{
+			Fields: map[string]map[string]interface{}{"xos.Query": map[string]interface{}{"kind": 0}},
+		},
+		Elements: queries,
+		Model:    model_md,
+		Kind:     "DEFAULT",
+	}
+	err = grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.xos.Filter"+modelName, headers, h, h.GetParams)
+	if err != nil {
+		return nil, err
+	}
+
+	if h.Status != nil && h.Status.Err() != nil {
+		return nil, h.Status.Err()
+	}
+
+	d, err := dynamic.AsDynamicMessage(h.Response)
+	if err != nil {
+		return nil, err
+	}
+
+	items, err := d.TryGetFieldByName("items")
+	if err != nil {
+		return nil, err
+	}
+
+	return ItemsToDynamicMessageList(items), nil
+}
+
+// Get a model from XOS given a fieldName/fieldValue
+func FindModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, queries map[string]string) (*dynamic.Message, error) {
+	models, err := FilterModels(conn, descriptor, modelName, queries)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(models) == 0 {
+		return nil, errors.New("rpc error: code = NotFound")
+	}
+
+	return models[0], nil
 }
 
 // Find a model, but retry under a variety of circumstances
-func FindModelWithRetry(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, fieldName string, fieldValue string, flags uint32) (*grpc.ClientConn, *dynamic.Message, error) {
+func FindModelWithRetry(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, queries map[string]string, flags uint32) (*grpc.ClientConn, *dynamic.Message, error) {
 	quiet := (flags & GM_QUIET) != 0
 	until_found := (flags & GM_UNTIL_FOUND) != 0
 	until_enacted := (flags & GM_UNTIL_ENACTED) != 0
@@ -239,7 +416,7 @@ func FindModelWithRetry(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSour
 			}
 		}
 
-		model, err := FindModel(conn, descriptor, modelName, fieldName, fieldValue)
+		model, err := FindModel(conn, descriptor, modelName, queries)
 		if err != nil {
 			if strings.Contains(err.Error(), "rpc error: code = Unavailable") ||
 				strings.Contains(err.Error(), "rpc error: code = Internal desc = stream terminated by RST_STREAM") {
@@ -282,6 +459,8 @@ func FindModelWithRetry(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSour
 	}
 }
 
+// Takes a *dynamic.Message and turns it into a map of fields to interfaces
+//    TODO: Might be more useful to convert the values to strings and ints
 func MessageToMap(d *dynamic.Message) map[string]interface{} {
 	fields := make(map[string]interface{})
 	for _, field_desc := range d.GetKnownFields() {
@@ -291,6 +470,7 @@ func MessageToMap(d *dynamic.Message) map[string]interface{} {
 	return fields
 }
 
+// Returns True if a message has been enacted
 func IsEnacted(d *dynamic.Message) bool {
 	enacted := d.GetFieldByName("enacted").(float64)
 	updated := d.GetFieldByName("updated").(float64)

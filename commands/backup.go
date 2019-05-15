@@ -223,7 +223,8 @@ func (options *BackupRestore) Execute(args []string) error {
 	// STEP 4: Wait for completion
 
 	flags := GM_UNTIL_ENACTED | GM_UNTIL_FOUND | GM_UNTIL_STATUS | Ternary_uint32(options.Quiet, GM_QUIET, 0)
-	conn, completed_backupop, err := FindModelWithRetry(conn, descriptor, "BackupOperation", "uuid", backupop["uuid"].(string), flags)
+	queries := map[string]string{"uuid": backupop["uuid"].(string)}
+	conn, completed_backupop, err := FindModelWithRetry(conn, descriptor, "BackupOperation", queries, flags)
 	if err != nil {
 		return err
 	}
