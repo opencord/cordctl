@@ -17,6 +17,7 @@
 package commands
 
 import (
+	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic"
@@ -55,18 +56,30 @@ func (h *RpcEventHandler) GetParams(msg proto.Message) error {
 		return err
 	}
 
-	//fmt.Printf("MessageName: %s\n", dmsg.XXX_MessageName())
+	fmt.Printf("MessageName: %s\n", dmsg.XXX_MessageName())
 
 	if h.Fields == nil || len(h.Fields) == 0 {
-		//fmt.Println("EOF")
+		fmt.Println("EOF")
 		return io.EOF
 	}
 
 	fields, ok := h.Fields[dmsg.XXX_MessageName()]
 	if !ok {
-		//fmt.Println("nil")
+		fmt.Println("nil")
 		return nil
 	}
+
+	/*
+		md := dmsg.GetMessageDescriptor()
+		fmt.Println("MD", md)
+		fld := md.FindFieldByName("elements")
+		fmt.Println("FLD", fld)
+		mt := fld.GetMessageType()
+		fmt.Println("MT", mt)
+		nm := dynamic.NewMessage(mt)
+		nm.SetFieldByName("name", "foo")
+		fmt.Println("NM", nm)
+	*/
 
 	for k, v := range fields {
 		dmsg.TrySetFieldByName(k, v)

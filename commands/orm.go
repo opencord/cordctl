@@ -21,11 +21,63 @@ import (
 	"errors"
 	"fmt"
 	"github.com/fullstorydev/grpcurl"
+	"github.com/golang/protobuf/proto"
 	"github.com/jhump/protoreflect/dynamic"
 	"google.golang.org/grpc"
+	"io"
 	"strings"
 	"time"
 )
+
+type QueryElement struct {
+	operator string
+	sValue   string
+	iValue   int32
+}
+
+type QueryEventHandler struct {
+	RpcEventHandler
+	Elements map[string]QueryElement
+}
+
+func (h *QueryEventHandler) GetParams(msg proto.Message) error {
+	dmsg, err := dynamic.AsDynamicMessage(msg)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("MessageName: %s\n", dmsg.XXX_MessageName())
+
+	if h.Fields == nil || len(h.Fields) == 0 {
+		fmt.Println("EOF")
+		return io.EOF
+	}
+
+	fields, ok := h.Fields[dmsg.XXX_MessageName()]
+	if !ok {
+		fmt.Println("nil")
+		return nil
+	}
+
+	md := dmsg.GetMessageDescriptor()
+	elements_fld := md.FindFieldByName("elements")
+	elements_mt := elements_fld.GetMessageType()
+
+	for field_name, element := range h.Elements {
+		nm := dynamic.NewMessage(elements_mt)
+		nm.SetFieldByName("name", field_name)
+		nm.SetFieldByName("sValue", element.sValue)
+		SetEnumValue(nm, "operator", element.operator)
+		dmsg.AddRepeatedFieldByName("elements", nm)
+	}
+
+	for k, v := range fields {
+		dmsg.TrySetFieldByName(k, v)
+	}
+	delete(h.Fields, dmsg.XXX_MessageName())
+
+	return nil
+}
 
 const GM_QUIET = 1
 const GM_UNTIL_FOUND = 2
@@ -179,6 +231,38 @@ func GetModelWithRetry(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSourc
 
 		return conn, model, nil
 	}
+}
+
+func FilterModels(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, fieldName string, fieldValue string) (*dynamic.Message, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+	defer cancel()
+
+	headers := GenerateHeaders()
+
+	element_map := make(map[string]QueryElement)
+	element_map["name"] = QueryElement{sValue: "two", operator: "LESS_THAN"}
+
+	h := &QueryEventHandler{
+		RpcEventHandler: RpcEventHandler{
+			Fields: map[string]map[string]interface{}{"xos.Query": map[string]interface{}{"kind": 0}},
+		},
+		Elements: element_map,
+	}
+	err := grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.xos.Filter"+modelName, headers, h, h.GetParams)
+	if err != nil {
+		return nil, err
+	}
+
+	if h.Status != nil && h.Status.Err() != nil {
+		return nil, h.Status.Err()
+	}
+
+	d, err := dynamic.AsDynamicMessage(h.Response)
+	if err != nil {
+		return nil, err
+	}
+
+	return d, nil
 }
 
 // Get a model from XOS given a fieldName/fieldValue

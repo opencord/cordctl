@@ -17,9 +17,9 @@
 package commands
 
 import (
-	"context"
+	//	"context"
 	"fmt"
-	"github.com/fullstorydev/grpcurl"
+	//"github.com/fullstorydev/grpcurl"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/jhump/protoreflect/dynamic"
 	"github.com/opencord/cordctl/format"
@@ -106,25 +106,26 @@ func (options *ModelList) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+	/*
+		method := "xos.xos/List" + string(options.Args.ModelName)
 
-	method := "xos.xos/List" + string(options.Args.ModelName)
+		ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+		defer cancel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
-	defer cancel()
+		headers := GenerateHeaders()
 
-	headers := GenerateHeaders()
+		h := &RpcEventHandler{}
+		err = grpcurl.InvokeRPC(ctx, descriptor, conn, method, headers, h, h.GetParams)
+		if err != nil {
+			return err
+		}
 
-	h := &RpcEventHandler{}
-	err = grpcurl.InvokeRPC(ctx, descriptor, conn, method, headers, h, h.GetParams)
-	if err != nil {
-		return err
-	}
+		if h.Status != nil && h.Status.Err() != nil {
+			return h.Status.Err()
+		}
 
-	if h.Status != nil && h.Status.Err() != nil {
-		return h.Status.Err()
-	}
-
-	d, err := dynamic.AsDynamicMessage(h.Response)
+		d, err := dynamic.AsDynamicMessage(h.Response)*/
+	d, err := FilterModels(conn, descriptor, string(options.Args.ModelName), "name", "mysite")
 	if err != nil {
 		return err
 	}
