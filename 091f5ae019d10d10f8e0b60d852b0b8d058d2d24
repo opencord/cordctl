@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b2bb507e_9bb8ed82",
+        "filename": "commands/completion.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2019-05-15T17:43:36Z",
+      "side": 1,
+      "message": "spelling, if this is copy/pasted it means voltctl has it too ;)",
+      "revId": "091f5ae019d10d10f8e0b60d852b0b8d058d2d24",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    }
+  ]
+}
