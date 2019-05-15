@@ -17,9 +17,9 @@
 package commands
 
 import (
-	"context"
+	//	"context"
 	"fmt"
-	"github.com/fullstorydev/grpcurl"
+	//"github.com/fullstorydev/grpcurl"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/jhump/protoreflect/dynamic"
 	"github.com/opencord/cordctl/format"
@@ -40,6 +40,7 @@ type ModelList struct {
 	ShowBookkeeping bool `long:"showbookkeeping" description:"Show bookkeeping fields in default output"`
 	Args            struct {
 		ModelName ModelNameString
+		Queries   []string
 	} `positional-args:"yes" required:"yes"`
 }
 
@@ -107,37 +108,25 @@ func (options *ModelList) Execute(args []string) error {
 		return err
 	}
 
-	method := "xos.xos/List" + string(options.Args.ModelName)
+	var models []*dynamic.Message
 
-	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
-	defer cancel()
-
-	headers := GenerateHeaders()
-
-	h := &RpcEventHandler{}
-	err = grpcurl.InvokeRPC(ctx, descriptor, conn, method, headers, h, h.GetParams)
+	queries, err := QueryStringsToMap(options.Args.Queries)
 	if err != nil {
 		return err
 	}
 
-	if h.Status != nil && h.Status.Err() != nil {
-		return h.Status.Err()
+	if len(queries) == 0 {
+		models, err = ListModels(conn, descriptor, string(options.Args.ModelName))
+	} else {
+		models, err = FilterModels(conn, descriptor, string(options.Args.ModelName), queries)
 	}
-
-	d, err := dynamic.AsDynamicMessage(h.Response)
-	if err != nil {
-		return err
-	}
-
-	items, err := d.TryGetFieldByName("items")
 	if err != nil {
 		return err
 	}
 
 	field_names := make(map[string]bool)
-	data := make([]map[string]interface{}, len(items.([]interface{})))
-	for i, item := range items.([]interface{}) {
-		val := item.(*dynamic.Message)
+	data := make([]map[string]interface{}, len(models))
+	for i, val := range models {
 		data[i] = make(map[string]interface{})
 		for _, field_desc := range val.GetKnownFields() {
 			field_name := field_desc.GetName()
