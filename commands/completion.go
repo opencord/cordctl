@@ -1,6 +1,5 @@
 /*
- * Portions copyright 2019-present Open Networking Foundation
- * Original copyright 2019-present Ciena Corporation
+ * Copyright 2019-present Ciena Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package version
+package commands
 
-// Default build-time variable.
-// These values can (should) be overridden via ldflags when built with
-// `make`
-var (
-	Version   = "unknown-version"
-	GoVersion = "unknown-goversion"
-	GitCommit = "unknown-gitcommit"
-	GitDirty  = "unknown-gitdirty"
-	BuildTime = "unknown-buildtime"
-	Os        = "unknown-os"
-	Arch      = "unknown-arch"
+import (
+	"fmt"
+	flags "github.com/jessevdk/go-flags"
+	"github.com/opencord/cordctl/completion"
 )
+
+type BashOptions struct{}
+
+type CompletionOptions struct {
+	BashOptions `command:"bash"`
+}
+
+func RegisterCompletionCommands(parent *flags.Parser) {
+	parent.AddCommand("completion", "generate shell compleition", "Commands to generate shell completion information", &CompletionOptions{})
+}
+
+func (options *BashOptions) Execute(args []string) error {
+	fmt.Println(completion.Bash)
+	return nil
+}

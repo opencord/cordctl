@@ -32,6 +32,26 @@ The `-h` option can be used at multiple levels to get help, for example:
 ./cordctl model list -h
 ```
 
+## Shell Completion
+`cordctl` supports shell completion for the `bash` shell. To enable
+shell Completion you can use the following command on *most* \*nix based system.
+```bash
+source <(cordctl completion bash)
+```
+
+If this does not work on your system, as is the case with the standard
+bash shell on MacOS, then you can try the following command:
+```bash
+source /dev/stdin <<<"$(cordctl completion bash)"
+```
+
+If you which to make `bash` shell completion automatic when you login to
+your account you can append the output of `cordctl completion bash` to
+your `$HOME/.bashrc`:
+```bash
+cordctl completion bash >> $HOME/.bashrc
+```
+
 ## Development Environment
 
 To run unit tests, `go-junit-report` and `gocover-obertura` tools must be installed. One way to do this is to install them with `go get`, and then ensure your `GOPATH` is part of your `PATH` (editing your `~/.profile` as necessary). 

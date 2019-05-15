@@ -31,13 +31,15 @@ const (
 	DEFAULT_MODEL_AVAILABLE_FORMAT = "{{ . }}"
 )
 
+type ModelNameString string
+
 type ModelList struct {
 	OutputOptions
 	ShowHidden      bool `long:"showhidden" description:"Show hidden fields in default output"`
 	ShowFeedback    bool `long:"showfeedback" description:"Show feedback fields in default output"`
 	ShowBookkeeping bool `long:"showbookkeeping" description:"Show bookkeeping fields in default output"`
 	Args            struct {
-		ModelName string
+		ModelName ModelNameString
 	} `positional-args:"yes" required:"yes"`
 }
 
@@ -100,12 +102,12 @@ func (options *ModelList) Execute(args []string) error {
 
 	defer conn.Close()
 
-	err = CheckModelName(descriptor, options.Args.ModelName)
+	err = CheckModelName(descriptor, string(options.Args.ModelName))
 	if err != nil {
 		return err
 	}
 
-	method := "xos.xos/List" + options.Args.ModelName
+	method := "xos.xos/List" + string(options.Args.ModelName)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
 	defer cancel()
@@ -194,4 +196,27 @@ func (options *ModelList) Execute(args []string) error {
 
 	GenerateOutput(&result)
 	return nil
+}
+
+func (modelName *ModelNameString) Complete(match string) []flags.Completion {
+	conn, descriptor, err := InitReflectionClient()
+	if err != nil {
+		return nil
+	}
+
+	defer conn.Close()
+
+	models, err := GetModelNames(descriptor)
+	if err != nil {
+		return nil
+	}
+
+	list := make([]flags.Completion, 0)
+	for k := range models {
+		if strings.HasPrefix(k, match) {
+			list = append(list, flags.Completion{Item: k})
+		}
+	}
+
+	return list
 }
