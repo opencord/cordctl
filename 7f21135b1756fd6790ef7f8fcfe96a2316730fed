@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "127077e3_0895973e",
+        "filename": "commands/orm.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 1000011
+      },
+      "writtenOn": "2019-05-16T14:47:25Z",
+      "side": 1,
+      "message": "Will the shell mangle the exclamation point, or require quoting to work?",
+      "range": {
+        "startLine": 53,
+        "startChar": 1,
+        "endLine": 54,
+        "endChar": 33
+      },
+      "revId": "7f21135b1756fd6790ef7f8fcfe96a2316730fed",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9033e483_f76fab01",
+        "filename": "commands/orm.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 1000011
+      },
+      "writtenOn": "2019-05-16T14:47:25Z",
+      "side": 1,
+      "message": "So \u003d and \u003d\u003d are equivalent - is this for user convenience?",
+      "range": {
+        "startLine": 55,
+        "startChar": 1,
+        "endLine": 58,
+        "endChar": 34
+      },
+      "revId": "7f21135b1756fd6790ef7f8fcfe96a2316730fed",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "efe9ef96_e123bd1f",
+        "filename": "commands/orm.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 1000011
+      },
+      "writtenOn": "2019-05-16T14:47:25Z",
+      "side": 1,
+      "message": "Same as above, shell mangling of \u003e and \u003c",
+      "range": {
+        "startLine": 59,
+        "startChar": 1,
+        "endLine": 62,
+        "endChar": 1
+      },
+      "revId": "7f21135b1756fd6790ef7f8fcfe96a2316730fed",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": true
+    }
+  ]
+}
