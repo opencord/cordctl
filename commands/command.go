@@ -179,3 +179,21 @@ func GenerateOutput(result *CommandResult) {
 		}
 	}
 }
+
+func FormatAndGenerateOutput(options *OutputOptions, default_format string, quiet_format string, data interface{}) {
+	outputFormat := CharReplacer.Replace(options.Format)
+	if outputFormat == "" {
+		outputFormat = default_format
+	}
+	if (options.Quiet) && (quiet_format != "") {
+		outputFormat = quiet_format
+	}
+
+	result := CommandResult{
+		Format:   format.Format(outputFormat),
+		OutputAs: toOutputType(options.OutputAs),
+		Data:     data,
+	}
+
+	GenerateOutput(&result)
+}

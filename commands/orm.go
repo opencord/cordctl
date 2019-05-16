@@ -120,19 +120,26 @@ func (h *QueryEventHandler) GetParams(msg proto.Message) error {
 }
 
 // Take a string list of queries and turns it into a map of queries
-func QueryStringsToMap(query_args []string) (map[string]string, error) {
+func QueryStringsToMap(query_args []string, allow_inequality bool) (map[string]string, error) {
 	queries := make(map[string]string)
 	for _, query_str := range query_args {
 		query_str := strings.Trim(query_str, " ")
 		operator_pos := -1
 		for i, ch := range query_str {
-			if (ch == '!') || (ch == '=') || (ch == '>') || (ch == '<') {
-				operator_pos = i
-				break
+			if allow_inequality {
+				if (ch == '!') || (ch == '=') || (ch == '>') || (ch == '<') {
+					operator_pos = i
+					break
+				}
+			} else {
+				if ch == '=' {
+					operator_pos = i
+					break
+				}
 			}
 		}
 		if operator_pos == -1 {
-			return nil, fmt.Errorf("Illegal query string %s", query_str)
+			return nil, fmt.Errorf("Illegal operator/value string %s", query_str)
 		}
 		queries[query_str[:operator_pos]] = query_str[operator_pos:]
 	}
@@ -140,13 +147,13 @@ func QueryStringsToMap(query_args []string) (map[string]string, error) {
 }
 
 // Take a string of comma-separated queries and turn it into a map of queries
-func CommaSeparatedQueryToMap(query_str string) (map[string]string, error) {
+func CommaSeparatedQueryToMap(query_str string, allow_inequality bool) (map[string]string, error) {
 	if query_str == "" {
 		return nil, nil
 	}
 
 	query_strings := strings.Split(query_str, ",")
-	return QueryStringsToMap(query_strings)
+	return QueryStringsToMap(query_strings, allow_inequality)
 }
 
 // Return a list of all available model names
@@ -207,6 +214,33 @@ func CreateModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, mod
 	if resp.HasFieldName("uuid") {
 		fields["uuid"] = resp.GetFieldByName("uuid").(string)
 	}
+
+	return nil
+}
+
+// Update a model in XOS given a map of fields
+func UpdateModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, fields map[string]interface{}) error {
+	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+	defer cancel()
+
+	headers := GenerateHeaders()
+
+	h := &RpcEventHandler{
+		Fields: map[string]map[string]interface{}{"xos." + modelName: fields},
+	}
+	err := grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.xos.Update"+modelName, headers, h, h.GetParams)
+	if err != nil {
+		return err
+	} else if h.Status != nil && h.Status.Err() != nil {
+		return h.Status.Err()
+	}
+
+	resp, err := dynamic.AsDynamicMessage(h.Response)
+	if err != nil {
+		return err
+	}
+
+	_ = resp
 
 	return nil
 }
@@ -383,6 +417,15 @@ func FilterModels(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, mo
 	}
 
 	return ItemsToDynamicMessageList(items), nil
+}
+
+// Call ListModels or FilterModels as appropriate
+func ListOrFilterModels(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, queries map[string]string) ([]*dynamic.Message, error) {
+	if len(queries) == 0 {
+		return ListModels(conn, descriptor, modelName)
+	} else {
+		return FilterModels(conn, descriptor, modelName, queries)
+	}
 }
 
 // Get a model from XOS given a fieldName/fieldValue
