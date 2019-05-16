@@ -16,6 +16,7 @@
 package commands
 
 import (
+	"bufio"
 	b64 "encoding/base64"
 	"fmt"
 	"github.com/fullstorydev/grpcurl"
@@ -23,6 +24,9 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	reflectpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
+	"log"
+	"os"
+	"strings"
 )
 
 func GenerateHeaders() []string {
@@ -60,5 +64,32 @@ func Ternary_uint32(condition bool, value_true uint32, value_false uint32) uint3
 func conditional_printf(visible bool, format string, args ...interface{}) {
 	if visible {
 		fmt.Printf(format, args...)
+	}
+}
+
+// Print a confirmation prompt and get a response from the user
+func Confirmf(format string, args ...interface{}) bool {
+	if GlobalOptions.Yes {
+		return true
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		msg := fmt.Sprintf(format, args...)
+		fmt.Print(msg)
+
+		response, err := reader.ReadString('\n')
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		response = strings.ToLower(strings.TrimSpace(response))
+
+		if response == "y" || response == "yes" {
+			return true
+		} else if response == "n" || response == "no" {
+			return false
+		}
 	}
 }

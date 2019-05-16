@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	flags "github.com/jessevdk/go-flags"
-	"github.com/opencord/cordctl/format"
 	"time"
 )
 
@@ -139,27 +138,13 @@ func (options *BackupCreate) Execute(args []string) error {
 
 	// STEP 6: Show results
 
-	outputFormat := CharReplacer.Replace(options.Format)
-	if outputFormat == "" {
-		outputFormat = DEFAULT_BACKUP_FORMAT
-	}
-	if options.Quiet {
-		outputFormat = "{{.Status}}"
-	}
-
 	data := make([]BackupOutput, 1)
 	data[0].Chunks = h.chunks
 	data[0].Bytes = h.bytes
 	data[0].Status = h.status
 	data[0].Checksum = h.GetChecksum()
 
-	result := CommandResult{
-		Format:   format.Format(outputFormat),
-		OutputAs: toOutputType(options.OutputAs),
-		Data:     data,
-	}
-
-	GenerateOutput(&result)
+	FormatAndGenerateOutput(&options.OutputOptions, DEFAULT_BACKUP_FORMAT, "{{.Status}}", data)
 
 	return nil
 }
@@ -235,14 +220,6 @@ func (options *BackupRestore) Execute(args []string) error {
 
 	// STEP 5: Show results
 
-	outputFormat := CharReplacer.Replace(options.Format)
-	if outputFormat == "" {
-		outputFormat = DEFAULT_BACKUP_FORMAT
-	}
-	if options.Quiet {
-		outputFormat = "{{.Status}}"
-	}
-
 	data := make([]BackupOutput, 1)
 	data[0].Checksum = upload_result.GetFieldByName("checksum").(string)
 	data[0].Chunks = int(upload_result.GetFieldByName("chunks_received").(int32))
@@ -254,13 +231,7 @@ func (options *BackupRestore) Execute(args []string) error {
 		data[0].Status = "FAILURE"
 	}
 
-	result := CommandResult{
-		Format:   format.Format(outputFormat),
-		OutputAs: toOutputType(options.OutputAs),
-		Data:     data,
-	}
-
-	GenerateOutput(&result)
+	FormatAndGenerateOutput(&options.OutputOptions, DEFAULT_BACKUP_FORMAT, "{{.Status}}", data)
 
 	return nil
 }

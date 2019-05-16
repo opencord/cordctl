@@ -32,6 +32,7 @@ func main() {
 	}
 	commands.RegisterBackupCommands(parser)
 	commands.RegisterModelCommands(parser)
+	commands.RegisterModelTypeCommands(parser)
 	commands.RegisterServiceCommands(parser)
 	commands.RegisterTransferCommands(parser)
 	commands.RegisterVersionCommands(parser)

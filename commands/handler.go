@@ -69,7 +69,15 @@ func (h *RpcEventHandler) GetParams(msg proto.Message) error {
 	}
 
 	for k, v := range fields {
-		dmsg.TrySetFieldByName(k, v)
+		// _json is a special field name that indicates we should unmarshal json data
+		if k == "_json" {
+			err = dmsg.UnmarshalMergeJSON(v.([]byte))
+			if err != nil {
+				return err
+			}
+		} else {
+			dmsg.SetFieldByName(k, v)
+		}
 	}
 	delete(h.Fields, dmsg.XXX_MessageName())
 

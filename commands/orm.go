@@ -51,21 +51,21 @@ type QueryEventHandler struct {
 //    "==foo"  --> "EQUAL", "foo"
 func DecodeOperator(query string) (string, string, bool, error) {
 	if strings.HasPrefix(query, "!=") {
-		return query[2:], "EQUAL", true, nil
+		return strings.TrimSpace(query[2:]), "EQUAL", true, nil
 	} else if strings.HasPrefix(query, "==") {
 		return "", "", false, errors.New("Operator == is now allowed. Suggest using = instead.")
 	} else if strings.HasPrefix(query, "=") {
-		return query[1:], "EQUAL", false, nil
+		return strings.TrimSpace(query[1:]), "EQUAL", false, nil
 	} else if strings.HasPrefix(query, ">=") {
-		return query[2:], "GREATER_THAN_OR_EQUAL", false, nil
+		return strings.TrimSpace(query[2:]), "GREATER_THAN_OR_EQUAL", false, nil
 	} else if strings.HasPrefix(query, ">") {
-		return query[1:], "GREATER_THAN", false, nil
+		return strings.TrimSpace(query[1:]), "GREATER_THAN", false, nil
 	} else if strings.HasPrefix(query, "<=") {
-		return query[2:], "LESS_THAN_OR_EQUAL", false, nil
+		return strings.TrimSpace(query[2:]), "LESS_THAN_OR_EQUAL", false, nil
 	} else if strings.HasPrefix(query, "<") {
-		return query[1:], "LESS_THAN", false, nil
+		return strings.TrimSpace(query[1:]), "LESS_THAN", false, nil
 	} else {
-		return query, "EQUAL", false, nil
+		return strings.TrimSpace(query), "EQUAL", false, nil
 	}
 }
 
@@ -95,15 +95,32 @@ func (h *QueryEventHandler) GetParams(msg proto.Message) error {
 
 		nm := dynamic.NewMessage(elements_mt)
 
-		field_type := h.Model.FindFieldByName(field_name).GetType()
-		if field_type == descriptor.FieldDescriptorProto_TYPE_INT32 {
-			i, _ := strconv.ParseInt(value, 10, 32)
+		field_descriptor := h.Model.FindFieldByName(field_name)
+		if field_descriptor == nil {
+			return fmt.Errorf("Field %s does not exist", field_name)
+		}
+
+		field_type := field_descriptor.GetType()
+		switch field_type {
+		case descriptor.FieldDescriptorProto_TYPE_INT32:
+			var i int64
+			i, err = strconv.ParseInt(value, 10, 32)
 			nm.SetFieldByName("iValue", int32(i))
-		} else if field_type == descriptor.FieldDescriptorProto_TYPE_UINT32 {
-			i, _ := strconv.ParseInt(value, 10, 32)
+		case descriptor.FieldDescriptorProto_TYPE_UINT32:
+			var i int64
+			i, err = strconv.ParseInt(value, 10, 32)
 			nm.SetFieldByName("iValue", uint32(i))
-		} else {
+		case descriptor.FieldDescriptorProto_TYPE_FLOAT:
+			err = errors.New("Floating point filters are unsupported")
+		case descriptor.FieldDescriptorProto_TYPE_DOUBLE:
+			err = errors.New("Floating point filters are unsupported")
+		default:
 			nm.SetFieldByName("sValue", value)
+			err = nil
+		}
+
+		if err != nil {
+			return err
 		}
 
 		nm.SetFieldByName("name", field_name)
@@ -120,33 +137,83 @@ func (h *QueryEventHandler) GetParams(msg proto.Message) error {
 }
 
 // Take a string list of queries and turns it into a map of queries
-func QueryStringsToMap(query_args []string) (map[string]string, error) {
+func QueryStringsToMap(query_args []string, allow_inequality bool) (map[string]string, error) {
 	queries := make(map[string]string)
 	for _, query_str := range query_args {
-		query_str := strings.Trim(query_str, " ")
+		query_str := strings.TrimSpace(query_str)
 		operator_pos := -1
 		for i, ch := range query_str {
-			if (ch == '!') || (ch == '=') || (ch == '>') || (ch == '<') {
-				operator_pos = i
-				break
+			if allow_inequality {
+				if (ch == '!') || (ch == '=') || (ch == '>') || (ch == '<') {
+					operator_pos = i
+					break
+				}
+			} else {
+				if ch == '=' {
+					operator_pos = i
+					break
+				}
 			}
 		}
 		if operator_pos == -1 {
-			return nil, fmt.Errorf("Illegal query string %s", query_str)
+			return nil, fmt.Errorf("Illegal operator/value string %s", query_str)
 		}
-		queries[query_str[:operator_pos]] = query_str[operator_pos:]
+		queries[strings.TrimSpace(query_str[:operator_pos])] = query_str[operator_pos:]
 	}
 	return queries, nil
 }
 
 // Take a string of comma-separated queries and turn it into a map of queries
-func CommaSeparatedQueryToMap(query_str string) (map[string]string, error) {
+func CommaSeparatedQueryToMap(query_str string, allow_inequality bool) (map[string]string, error) {
 	if query_str == "" {
 		return nil, nil
 	}
 
 	query_strings := strings.Split(query_str, ",")
-	return QueryStringsToMap(query_strings)
+	return QueryStringsToMap(query_strings, allow_inequality)
+}
+
+// Convert a string into the appropriate gRPC type for a given field
+func TypeConvert(source grpcurl.DescriptorSource, modelName string, field_name string, v string) (interface{}, error) {
+	model_descriptor, err := source.FindSymbol("xos." + modelName)
+	if err != nil {
+		return nil, err
+	}
+	model_md, ok := model_descriptor.(*desc.MessageDescriptor)
+	if !ok {
+		return nil, fmt.Errorf("Failed to convert model %s to a messagedescriptor", modelName)
+	}
+	field_descriptor := model_md.FindFieldByName(field_name)
+	if field_descriptor == nil {
+		return nil, fmt.Errorf("Field %s does not exist in model %s", field_name, modelName)
+	}
+	field_type := field_descriptor.GetType()
+
+	var result interface{}
+
+	switch field_type {
+	case descriptor.FieldDescriptorProto_TYPE_INT32:
+		var i int64
+		i, err = strconv.ParseInt(v, 10, 32)
+		result = int32(i)
+	case descriptor.FieldDescriptorProto_TYPE_UINT32:
+		var i int64
+		i, err = strconv.ParseInt(v, 10, 32)
+		result = uint32(i)
+	case descriptor.FieldDescriptorProto_TYPE_FLOAT:
+		var f float64
+		f, err = strconv.ParseFloat(v, 32)
+		result = float32(f)
+	case descriptor.FieldDescriptorProto_TYPE_DOUBLE:
+		var f float64
+		f, err = strconv.ParseFloat(v, 64)
+		result = f
+	default:
+		result = v
+		err = nil
+	}
+
+	return result, err
 }
 
 // Return a list of all available model names
@@ -207,6 +274,34 @@ func CreateModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, mod
 	if resp.HasFieldName("uuid") {
 		fields["uuid"] = resp.GetFieldByName("uuid").(string)
 	}
+
+	return nil
+}
+
+// Update a model in XOS given a map of fields
+func UpdateModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, fields map[string]interface{}) error {
+	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+	defer cancel()
+
+	headers := GenerateHeaders()
+
+	h := &RpcEventHandler{
+		Fields: map[string]map[string]interface{}{"xos." + modelName: fields},
+	}
+	err := grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.xos.Update"+modelName, headers, h, h.GetParams)
+	if err != nil {
+		return err
+	} else if h.Status != nil && h.Status.Err() != nil {
+		return h.Status.Err()
+	}
+
+	resp, err := dynamic.AsDynamicMessage(h.Response)
+	if err != nil {
+		return err
+	}
+
+	// TODO: Do we need to do anything with the response?
+	_ = resp
 
 	return nil
 }
@@ -383,6 +478,15 @@ func FilterModels(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, mo
 	}
 
 	return ItemsToDynamicMessageList(items), nil
+}
+
+// Call ListModels or FilterModels as appropriate
+func ListOrFilterModels(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, queries map[string]string) ([]*dynamic.Message, error) {
+	if len(queries) == 0 {
+		return ListModels(conn, descriptor, modelName)
+	} else {
+		return FilterModels(conn, descriptor, modelName, queries)
+	}
 }
 
 // Get a model from XOS given a fieldName/fieldValue
