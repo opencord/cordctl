@@ -80,6 +80,7 @@ var GlobalOptions struct {
 	Cert     string `long:"tlscert" value-name:"CERT_FILE" description:"Path to TLS vertificate file"`
 	Key      string `long:"tlskey" value-name:"KEY_FILE" description:"Path to TLS key file"`
 	Verify   bool   `long:"tlsverify" description:"Use TLS and verify the remote"`
+	Yes      bool   `short:"y" long:"yes" description:"answer yes to any confirmation prompts"`
 }
 
 type OutputOptions struct {
@@ -143,6 +144,7 @@ func ProcessGlobalOptions() {
 		GlobalConfig.Password = GlobalOptions.Password
 	}
 
+	// Generate error messages for required settings
 	if GlobalConfig.Server == "" {
 		log.Fatal("Server is not set. Please update config file or use the -s option")
 	}
@@ -178,4 +180,23 @@ func GenerateOutput(result *CommandResult) {
 			fmt.Printf("%s", asYaml)
 		}
 	}
+}
+
+// Applies common output options to format and generate output
+func FormatAndGenerateOutput(options *OutputOptions, default_format string, quiet_format string, data interface{}) {
+	outputFormat := CharReplacer.Replace(options.Format)
+	if outputFormat == "" {
+		outputFormat = default_format
+	}
+	if (options.Quiet) && (quiet_format != "") {
+		outputFormat = quiet_format
+	}
+
+	result := CommandResult{
+		Format:   format.Format(outputFormat),
+		OutputAs: toOutputType(options.OutputAs),
+		Data:     data,
+	}
+
+	GenerateOutput(&result)
 }
