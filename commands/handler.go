@@ -69,7 +69,15 @@ func (h *RpcEventHandler) GetParams(msg proto.Message) error {
 	}
 
 	for k, v := range fields {
-		dmsg.TrySetFieldByName(k, v)
+		if k == "_json" {
+			err = dmsg.UnmarshalMergeJSON(v.([]byte))
+			if err != nil {
+				return err
+			}
+		} else {
+			//TypeConvertSet(dmsg, k, v)
+			dmsg.SetFieldByName(k, v)
+		}
 	}
 	delete(h.Fields, dmsg.XXX_MessageName())
 
