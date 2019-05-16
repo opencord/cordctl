@@ -21,7 +21,7 @@ import (
 	"github.com/fullstorydev/grpcurl"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/jhump/protoreflect/dynamic"
-	"github.com/opencord/cordctl/format"
+	//"github.com/opencord/cordctl/format"
 )
 
 const (
@@ -86,14 +86,6 @@ func (options *ServiceList) Execute(args []string) error {
 		return err
 	}
 
-	outputFormat := CharReplacer.Replace(options.Format)
-	if outputFormat == "" {
-		outputFormat = DEFAULT_SERVICE_FORMAT
-	}
-	if options.Quiet {
-		outputFormat = "{{.Id}}"
-	}
-
 	data := make([]ServiceListOutput, len(items.([]interface{})))
 
 	for i, item := range items.([]interface{}) {
@@ -103,12 +95,7 @@ func (options *ServiceList) Execute(args []string) error {
 		data[i].State = val.GetFieldByName("state").(string)
 	}
 
-	result := CommandResult{
-		Format:   format.Format(outputFormat),
-		OutputAs: toOutputType(options.OutputAs),
-		Data:     data,
-	}
+	FormatAndGenerateOutput(&options.OutputOptions, DEFAULT_SERVICE_FORMAT, "{{.Name}}", data)
 
-	GenerateOutput(&result)
 	return nil
 }

@@ -20,13 +20,7 @@ import (
 	"fmt"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/jhump/protoreflect/dynamic"
-	"github.com/opencord/cordctl/format"
-	"sort"
 	"strings"
-)
-
-const (
-	DEFAULT_MODEL_AVAILABLE_FORMAT = "{{ . }}"
 )
 
 type ModelNameString string
@@ -42,55 +36,28 @@ type ModelList struct {
 	} `positional-args:"yes" required:"yes"`
 }
 
-type ModelAvailable struct {
+type ModelUpdate struct {
 	OutputOptions
+	Filter    string `long:"filter" description:"Comma-separated list of filters"`
+	SetFields string `long:"set-field" description:"Comma-separated list of field=value to set"`
+	SetJSON   string `long:"set-json" description:"JSON dictionary to use for settings fields"`
+	Args      struct {
+		ModelName ModelNameString
+	} `positional-args:"yes" required:"yes"`
+	IDArgs struct {
+		ID []int32
+	} `positional-args:"yes" required:"no"`
 }
 
 type ModelOpts struct {
-	List      ModelList      `command:"list"`
-	Available ModelAvailable `command:"available"`
+	List   ModelList   `command:"list"`
+	Update ModelUpdate `command:"update"`
 }
 
 var modelOpts = ModelOpts{}
 
 func RegisterModelCommands(parser *flags.Parser) {
 	parser.AddCommand("model", "model commands", "Commands to query and manipulate XOS models", &modelOpts)
-}
-
-func (options *ModelAvailable) Execute(args []string) error {
-	conn, descriptor, err := InitReflectionClient()
-	if err != nil {
-		return err
-	}
-
-	defer conn.Close()
-
-	models, err := GetModelNames(descriptor)
-	if err != nil {
-		return err
-	}
-
-	model_names := []string{}
-	for k := range models {
-		model_names = append(model_names, k)
-	}
-
-	sort.Strings(model_names)
-
-	outputFormat := CharReplacer.Replace(options.Format)
-	if outputFormat == "" {
-		outputFormat = DEFAULT_MODEL_AVAILABLE_FORMAT
-	}
-
-	result := CommandResult{
-		Format:   format.Format(outputFormat),
-		OutputAs: toOutputType(options.OutputAs),
-		Data:     model_names,
-	}
-
-	GenerateOutput(&result)
-
-	return nil
 }
 
 func (options *ModelList) Execute(args []string) error {
@@ -106,18 +73,12 @@ func (options *ModelList) Execute(args []string) error {
 		return err
 	}
 
-	var models []*dynamic.Message
-
-	queries, err := CommaSeparatedQueryToMap(options.Filter)
+	queries, err := CommaSeparatedQueryToMap(options.Filter, true)
 	if err != nil {
 		return err
 	}
 
-	if len(queries) == 0 {
-		models, err = ListModels(conn, descriptor, string(options.Args.ModelName))
-	} else {
-		models, err = FilterModels(conn, descriptor, string(options.Args.ModelName), queries)
-	}
+	models, err := ListOrFilterModels(conn, descriptor, string(options.Args.ModelName), queries)
 	if err != nil {
 		return err
 	}
@@ -167,21 +128,89 @@ func (options *ModelList) Execute(args []string) error {
 		}
 	}
 
-	outputFormat := CharReplacer.Replace(options.Format)
-	if outputFormat == "" {
-		outputFormat = default_format.String()
-	}
-	if options.Quiet {
-		outputFormat = "{{.Id}}"
+	FormatAndGenerateOutput(&options.OutputOptions, default_format.String(), "{{.id}}", data)
+
+	return nil
+}
+
+func (options *ModelUpdate) Execute(args []string) error {
+	conn, descriptor, err := InitReflectionClient()
+	if err != nil {
+		return err
 	}
 
-	result := CommandResult{
-		Format:   format.Format(outputFormat),
-		OutputAs: toOutputType(options.OutputAs),
-		Data:     data,
+	defer conn.Close()
+
+	err = CheckModelName(descriptor, string(options.Args.ModelName))
+	if err != nil {
+		return err
 	}
 
-	GenerateOutput(&result)
+	if (len(options.IDArgs.ID) == 0 && len(options.Filter) == 0) ||
+		(len(options.IDArgs.ID) != 0 && len(options.Filter) != 0) {
+		return fmt.Errorf("Use either an ID or a --filter to specify which models to update")
+	}
+
+	queries, err := CommaSeparatedQueryToMap(options.Filter, true)
+	if err != nil {
+		return err
+	}
+
+	updates, err := CommaSeparatedQueryToMap(options.SetFields, true)
+	if err != nil {
+		return err
+	}
+
+	modelName := string(options.Args.ModelName)
+
+	var models []*dynamic.Message
+
+	if len(options.IDArgs.ID) > 0 {
+		models = make([]*dynamic.Message, len(options.IDArgs.ID))
+		for i, id := range options.IDArgs.ID {
+			models[i], err = GetModel(conn, descriptor, modelName, id)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		models, err = ListOrFilterModels(conn, descriptor, modelName, queries)
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(models) == 0 {
+		return fmt.Errorf("Filter matches no objects")
+	} else if len(models) > 1 {
+		if !Confirmf("Filter matches %d objects. Continue [y/n] ? ", len(models)) {
+			return fmt.Errorf("Aborted by user")
+		}
+	}
+
+	fields := make(map[string]interface{})
+
+	if len(options.SetJSON) > 0 {
+		fields["_json"] = []byte(options.SetJSON)
+	}
+
+	for fieldName, value := range updates {
+		value = value[1:]
+		proto_value, err := TypeConvert(descriptor, modelName, fieldName, value)
+		if err != nil {
+			return err
+		}
+		fields[fieldName] = proto_value
+	}
+
+	for _, model := range models {
+		fields["id"] = model.GetFieldByName("id").(int32)
+		UpdateModel(conn, descriptor, modelName, fields)
+	}
+
+	count := len(models)
+	FormatAndGenerateOutput(&options.OutputOptions, "{{.}} models updated.", "{{.}}", count)
+
 	return nil
 }
 

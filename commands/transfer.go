@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	flags "github.com/jessevdk/go-flags"
-	"github.com/opencord/cordctl/format"
 	"strings"
 )
 
@@ -92,27 +91,13 @@ func (options *TransferUpload) Execute(args []string) error {
 			upload_result.GetFieldByName("checksum").(string))
 	}
 
-	outputFormat := CharReplacer.Replace(options.Format)
-	if outputFormat == "" {
-		outputFormat = DEFAULT_TRANSFER_FORMAT
-	}
-	if options.Quiet {
-		outputFormat = "{{.Status}}"
-	}
-
 	data := make([]TransferOutput, 1)
 	data[0].Checksum = upload_result.GetFieldByName("checksum").(string)
 	data[0].Chunks = int(upload_result.GetFieldByName("chunks_received").(int32))
 	data[0].Bytes = int(upload_result.GetFieldByName("bytes_received").(int32))
 	data[0].Status = GetEnumValue(upload_result, "status")
 
-	result := CommandResult{
-		Format:   format.Format(outputFormat),
-		OutputAs: toOutputType(options.OutputAs),
-		Data:     data,
-	}
-
-	GenerateOutput(&result)
+	FormatAndGenerateOutput(&options.OutputOptions, DEFAULT_TRANSFER_FORMAT, "{{.Status}}", data)
 
 	return nil
 }
@@ -144,26 +129,13 @@ func (options *TransferDownload) Execute(args []string) error {
 		return err
 	}
 
-	outputFormat := CharReplacer.Replace(options.Format)
-	if outputFormat == "" {
-		outputFormat = DEFAULT_TRANSFER_FORMAT
-	}
-	if options.Quiet {
-		outputFormat = "{{.Status}}"
-	}
-
 	data := make([]TransferOutput, 1)
 	data[0].Chunks = h.chunks
 	data[0].Bytes = h.bytes
 	data[0].Status = h.status
+	data[0].Checksum = h.GetChecksum()
 
-	result := CommandResult{
-		Format:   format.Format(outputFormat),
-		OutputAs: toOutputType(options.OutputAs),
-		Data:     data,
-	}
-
-	GenerateOutput(&result)
+	FormatAndGenerateOutput(&options.OutputOptions, DEFAULT_TRANSFER_FORMAT, "{{.Status}}", data)
 
 	return nil
 }
