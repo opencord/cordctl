@@ -385,6 +385,15 @@ func FilterModels(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, mo
 	return ItemsToDynamicMessageList(items), nil
 }
 
+// Call ListModels or FilterModels as appropriate
+func ListOrFilterModels(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, queries map[string]string) ([]*dynamic.Message, error) {
+	if len(queries) == 0 {
+		return ListModels(conn, descriptor, modelName)
+	} else {
+		return FilterModels(conn, descriptor, modelName, queries)
+	}
+}
+
 // Get a model from XOS given a fieldName/fieldValue
 func FindModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, queries map[string]string) (*dynamic.Message, error) {
 	models, err := FilterModels(conn, descriptor, modelName, queries)

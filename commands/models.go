@@ -19,8 +19,6 @@ package commands
 import (
 	"fmt"
 	flags "github.com/jessevdk/go-flags"
-	"github.com/jhump/protoreflect/dynamic"
-	"github.com/opencord/cordctl/format"
 	"sort"
 	"strings"
 )
@@ -30,6 +28,10 @@ const (
 )
 
 type ModelNameString string
+
+type ModelAvailable struct {
+	OutputOptions
+}
 
 type ModelList struct {
 	OutputOptions
@@ -42,13 +44,19 @@ type ModelList struct {
 	} `positional-args:"yes" required:"yes"`
 }
 
-type ModelAvailable struct {
+type ModelUpdate struct {
 	OutputOptions
+	Filter string `long:"filter" description:"Comma-separated list of filters"`
+	Set    string `long:"set" description:"Comma-separated list of field=value to set"`
+	Args   struct {
+		ModelName ModelNameString
+	} `positional-args:"yes" required:"yes"`
 }
 
 type ModelOpts struct {
-	List      ModelList      `command:"list"`
 	Available ModelAvailable `command:"available"`
+	List      ModelList      `command:"list"`
+	Update    ModelUpdate    `command:"update"`
 }
 
 var modelOpts = ModelOpts{}
@@ -77,18 +85,7 @@ func (options *ModelAvailable) Execute(args []string) error {
 
 	sort.Strings(model_names)
 
-	outputFormat := CharReplacer.Replace(options.Format)
-	if outputFormat == "" {
-		outputFormat = DEFAULT_MODEL_AVAILABLE_FORMAT
-	}
-
-	result := CommandResult{
-		Format:   format.Format(outputFormat),
-		OutputAs: toOutputType(options.OutputAs),
-		Data:     model_names,
-	}
-
-	GenerateOutput(&result)
+	FormatAndGenerateOutput(&options.OutputOptions, DEFAULT_MODEL_AVAILABLE_FORMAT, "", model_names)
 
 	return nil
 }
@@ -106,18 +103,12 @@ func (options *ModelList) Execute(args []string) error {
 		return err
 	}
 
-	var models []*dynamic.Message
-
 	queries, err := CommaSeparatedQueryToMap(options.Filter)
 	if err != nil {
 		return err
 	}
 
-	if len(queries) == 0 {
-		models, err = ListModels(conn, descriptor, string(options.Args.ModelName))
-	} else {
-		models, err = FilterModels(conn, descriptor, string(options.Args.ModelName), queries)
-	}
+	models, err := ListOrFilterModels(conn, descriptor, string(options.Args.ModelName), queries)
 	if err != nil {
 		return err
 	}
@@ -167,21 +158,36 @@ func (options *ModelList) Execute(args []string) error {
 		}
 	}
 
-	outputFormat := CharReplacer.Replace(options.Format)
-	if outputFormat == "" {
-		outputFormat = default_format.String()
-	}
-	if options.Quiet {
-		outputFormat = "{{.Id}}"
+	FormatAndGenerateOutput(&options.OutputOptions, default_format.String(), "{{.id}}", data)
+
+	return nil
+}
+
+func (options *ModelUpdate) Execute(args []string) error {
+	conn, descriptor, err := InitReflectionClient()
+	if err != nil {
+		return err
 	}
 
-	result := CommandResult{
-		Format:   format.Format(outputFormat),
-		OutputAs: toOutputType(options.OutputAs),
-		Data:     data,
+	defer conn.Close()
+
+	err = CheckModelName(descriptor, string(options.Args.ModelName))
+	if err != nil {
+		return err
 	}
 
-	GenerateOutput(&result)
+	queries, err := CommaSeparatedQueryToMap(options.Filter)
+	if err != nil {
+		return err
+	}
+
+	models, err := ListOrFilterModels(conn, descriptor, string(options.Args.ModelName), queries)
+	if err != nil {
+		return err
+	}
+
+	FormatAndGenerateOutput(&options.OutputOptions, "", "{{.id}}", models)
+
 	return nil
 }
 
