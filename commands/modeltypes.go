@@ -59,7 +59,11 @@ func (options *ModelTypeList) Execute(args []string) error {
 
 	sort.Strings(model_names)
 
-	FormatAndGenerateOutput(&options.OutputOptions, DEFAULT_MODELTYPE_LIST_FORMAT, "", model_names)
+	FormatAndGenerateOutput(
+		&options.OutputOptions,
+		DEFAULT_MODELTYPE_LIST_FORMAT,
+		DEFAULT_MODELTYPE_LIST_FORMAT,
+		model_names)
 
 	return nil
 }

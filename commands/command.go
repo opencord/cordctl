@@ -188,7 +188,7 @@ func FormatAndGenerateOutput(options *OutputOptions, default_format string, quie
 	if outputFormat == "" {
 		outputFormat = default_format
 	}
-	if (options.Quiet) && (quiet_format != "") {
+	if options.Quiet {
 		outputFormat = quiet_format
 	}
 

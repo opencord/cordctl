@@ -563,6 +563,33 @@ func FindModelWithRetry(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSour
 	}
 }
 
+// Get a model from XOS given its ID
+func DeleteModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, id int32) error {
+	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+	defer cancel()
+
+	headers := GenerateHeaders()
+
+	h := &RpcEventHandler{
+		Fields: map[string]map[string]interface{}{"xos.ID": map[string]interface{}{"id": id}},
+	}
+	err := grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.xos.Delete"+modelName, headers, h, h.GetParams)
+	if err != nil {
+		return err
+	}
+
+	if h.Status != nil && h.Status.Err() != nil {
+		return h.Status.Err()
+	}
+
+	_, err = dynamic.AsDynamicMessage(h.Response)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Takes a *dynamic.Message and turns it into a map of fields to interfaces
 //    TODO: Might be more useful to convert the values to strings and ints
 func MessageToMap(d *dynamic.Message) map[string]interface{} {

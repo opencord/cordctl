@@ -103,6 +103,18 @@ If you don't know the ID of the object you wish to operate, or if you want to up
 cordctl model update Site --filter name=mysite --set-field site_url=http://www.opencord.org/
 ```
 
+### Deleting Models
+
+The syntax for deleting models is similar to that for updating models. You may delete by specifying one of more IDs, or you may delete by using a filter. For example,
+
+```bash
+# Delete Slice 1
+cordctl model delete Slice 1
+
+# Delete the Slice named myslice
+cordctl model delete Slice --filter name=mylice
+```
+
 ## Development Environment
 
 To run unit tests, `go-junit-report` and `gocover-obertura` tools must be installed. One way to do this is to install them with `go get`, and then ensure your `GOPATH` is part of your `PATH` (editing your `~/.profile` as necessary). 
