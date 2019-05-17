@@ -34,6 +34,24 @@
       "revId": "8b73967d45d0c31690417df70cc9e90339735a6d",
       "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7406a8dd_d4d00417",
+        "filename": "README.md",
+        "patchSetId": 9
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2019-05-17T19:23:05Z",
+      "side": 1,
+      "message": "so there are model types and model instances. so the question the i have is should the commands be\n\ncordctl modeltype list\ncordctl model list\n\n?",
+      "parentUuid": "65d307b9_23cd47fe",
+      "revId": "8b73967d45d0c31690417df70cc9e90339735a6d",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
     }
   ]
 }
