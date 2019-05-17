@@ -24,6 +24,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	reflectpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
+	"google.golang.org/grpc/status"
 	"log"
 	"os"
 	"strings"
@@ -92,4 +93,17 @@ func Confirmf(format string, args ...interface{}) bool {
 			return false
 		}
 	}
+}
+
+func HumanReadableError(err error) string {
+	st, ok := status.FromError(err)
+	if ok {
+		grpc_message := st.Message()
+		if strings.HasPrefix(grpc_message, "Exception calling application: ") {
+			return st.Message()[31:]
+		} else {
+			return st.Message()
+		}
+	}
+	return err.Error()
 }
