@@ -23,6 +23,11 @@ import (
 	"strings"
 )
 
+const (
+	DEFAULT_DELETE_FORMAT = "table{{ .Id }}\t{{ .Message }}"
+	DEFAULT_UPDATE_FORMAT = "table{{ .Id }}\t{{ .Message }}"
+)
+
 type ModelNameString string
 
 type ModelList struct {
@@ -30,7 +35,7 @@ type ModelList struct {
 	ShowHidden      bool   `long:"showhidden" description:"Show hidden fields in default output"`
 	ShowFeedback    bool   `long:"showfeedback" description:"Show feedback fields in default output"`
 	ShowBookkeeping bool   `long:"showbookkeeping" description:"Show bookkeeping fields in default output"`
-	Filter          string `long:"filter" description:"Comma-separated list of filters"`
+	Filter          string `short:"f" long:"filter" description:"Comma-separated list of filters"`
 	Args            struct {
 		ModelName ModelNameString
 	} `positional-args:"yes" required:"yes"`
@@ -38,7 +43,7 @@ type ModelList struct {
 
 type ModelUpdate struct {
 	OutputOptions
-	Filter    string `long:"filter" description:"Comma-separated list of filters"`
+	Filter    string `short:"f" long:"filter" description:"Comma-separated list of filters"`
 	SetFields string `long:"set-field" description:"Comma-separated list of field=value to set"`
 	SetJSON   string `long:"set-json" description:"JSON dictionary to use for settings fields"`
 	Args      struct {
@@ -49,15 +54,61 @@ type ModelUpdate struct {
 	} `positional-args:"yes" required:"no"`
 }
 
+type ModelDelete struct {
+	OutputOptions
+	Filter string `short:"f" long:"filter" description:"Comma-separated list of filters"`
+	Args   struct {
+		ModelName ModelNameString
+	} `positional-args:"yes" required:"yes"`
+	IDArgs struct {
+		ID []int32
+	} `positional-args:"yes" required:"no"`
+}
+
 type ModelOpts struct {
 	List   ModelList   `command:"list"`
 	Update ModelUpdate `command:"update"`
+	Delete ModelDelete `command:"delete"`
+}
+
+type ModelStatusOutputRow struct {
+	Id      int32  `json:"id"`
+	Message string `json:"message"`
+}
+
+type ModelStatusOutput struct {
+	Rows  []ModelStatusOutputRow
+	Quiet bool
 }
 
 var modelOpts = ModelOpts{}
 
 func RegisterModelCommands(parser *flags.Parser) {
 	parser.AddCommand("model", "model commands", "Commands to query and manipulate XOS models", &modelOpts)
+}
+
+func InitModelStatusOutput(quiet bool, count int) ModelStatusOutput {
+	if quiet {
+		return ModelStatusOutput{Quiet: quiet}
+	} else {
+		return ModelStatusOutput{Rows: make([]ModelStatusOutputRow, count), Quiet: quiet}
+	}
+}
+
+func UpdateModelStatusOutput(output *ModelStatusOutput, i int, id int32, status string, err error) {
+	if err != nil {
+		if output.Quiet {
+			fmt.Printf("%d: %s\n", id, HumanReadableError(err))
+		} else {
+			output.Rows[i] = ModelStatusOutputRow{Id: id, Message: HumanReadableError(err)}
+		}
+	} else {
+		if output.Quiet {
+			fmt.Println(id)
+		} else {
+			output.Rows[i] = ModelStatusOutputRow{Id: id, Message: status}
+		}
+	}
 }
 
 func (options *ModelList) Execute(args []string) error {
@@ -203,13 +254,78 @@ func (options *ModelUpdate) Execute(args []string) error {
 		fields[fieldName] = proto_value
 	}
 
-	for _, model := range models {
-		fields["id"] = model.GetFieldByName("id").(int32)
-		UpdateModel(conn, descriptor, modelName, fields)
+	modelStatusOutput := InitModelStatusOutput(options.Quiet, len(models))
+	for i, model := range models {
+		id := model.GetFieldByName("id").(int32)
+		fields["id"] = id
+		err := UpdateModel(conn, descriptor, modelName, fields)
+
+		UpdateModelStatusOutput(&modelStatusOutput, i, id, "Updated", err)
 	}
 
-	count := len(models)
-	FormatAndGenerateOutput(&options.OutputOptions, "{{.}} models updated.", "{{.}}", count)
+	if !options.Quiet {
+		FormatAndGenerateOutput(&options.OutputOptions, DEFAULT_UPDATE_FORMAT, "", modelStatusOutput.Rows)
+	}
+
+	return nil
+}
+
+func (options *ModelDelete) Execute(args []string) error {
+	conn, descriptor, err := InitReflectionClient()
+	if err != nil {
+		return err
+	}
+
+	defer conn.Close()
+
+	err = CheckModelName(descriptor, string(options.Args.ModelName))
+	if err != nil {
+		return err
+	}
+
+	if (len(options.IDArgs.ID) == 0 && len(options.Filter) == 0) ||
+		(len(options.IDArgs.ID) != 0 && len(options.Filter) != 0) {
+		return fmt.Errorf("Use either an ID or a --filter to specify which models to update")
+	}
+
+	queries, err := CommaSeparatedQueryToMap(options.Filter, true)
+	if err != nil {
+		return err
+	}
+
+	modelName := string(options.Args.ModelName)
+
+	var ids []int32
+
+	if len(options.IDArgs.ID) > 0 {
+		ids = options.IDArgs.ID
+	} else {
+		models, err := ListOrFilterModels(conn, descriptor, modelName, queries)
+		if err != nil {
+			return err
+		}
+		ids = make([]int32, len(models))
+		for i, model := range models {
+			ids[i] = model.GetFieldByName("id").(int32)
+		}
+		if len(ids) == 0 {
+			return fmt.Errorf("Filter matches no objects")
+		} else if len(ids) > 1 {
+			if !Confirmf("Filter matches %d objects. Continue [y/n] ? ", len(models)) {
+				return fmt.Errorf("Aborted by user")
+			}
+		}
+	}
+
+	modelStatusOutput := InitModelStatusOutput(options.Quiet, len(ids))
+	for i, id := range ids {
+		err = DeleteModel(conn, descriptor, modelName, id)
+		UpdateModelStatusOutput(&modelStatusOutput, i, id, "Deleted", err)
+	}
+
+	if !options.Quiet {
+		FormatAndGenerateOutput(&options.OutputOptions, DEFAULT_DELETE_FORMAT, "", modelStatusOutput.Rows)
+	}
 
 	return nil
 }
