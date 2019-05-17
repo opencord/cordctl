@@ -16,6 +16,24 @@
       "revId": "8b73967d45d0c31690417df70cc9e90339735a6d",
       "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "65d307b9_23cd47fe",
+        "filename": "README.md",
+        "patchSetId": 9
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2019-05-17T19:21:00Z",
+      "side": 1,
+      "message": "I\u0027ll see if I can describe it better. `model available` shows the kinds of models that you you can list. `model list \u003cmodelName\u003e` shows the instances of a particular model.",
+      "parentUuid": "3c65a07a_27735aa6",
+      "revId": "8b73967d45d0c31690417df70cc9e90339735a6d",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
     }
   ]
 }
