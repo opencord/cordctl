@@ -20,6 +20,7 @@ import (
 	"fmt"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/jhump/protoreflect/dynamic"
+	"log"
 	"strings"
 )
 
@@ -30,7 +31,7 @@ type ModelList struct {
 	ShowHidden      bool   `long:"showhidden" description:"Show hidden fields in default output"`
 	ShowFeedback    bool   `long:"showfeedback" description:"Show feedback fields in default output"`
 	ShowBookkeeping bool   `long:"showbookkeeping" description:"Show bookkeeping fields in default output"`
-	Filter          string `long:"filter" description:"Comma-separated list of filters"`
+	Filter          string `short:"f" long:"filter" description:"Comma-separated list of filters"`
 	Args            struct {
 		ModelName ModelNameString
 	} `positional-args:"yes" required:"yes"`
@@ -38,7 +39,7 @@ type ModelList struct {
 
 type ModelUpdate struct {
 	OutputOptions
-	Filter    string `long:"filter" description:"Comma-separated list of filters"`
+	Filter    string `short:"f" long:"filter" description:"Comma-separated list of filters"`
 	SetFields string `long:"set-field" description:"Comma-separated list of field=value to set"`
 	SetJSON   string `long:"set-json" description:"JSON dictionary to use for settings fields"`
 	Args      struct {
@@ -49,9 +50,21 @@ type ModelUpdate struct {
 	} `positional-args:"yes" required:"no"`
 }
 
+type ModelDelete struct {
+	OutputOptions
+	Filter string `short:"f" long:"filter" description:"Comma-separated list of filters"`
+	Args   struct {
+		ModelName ModelNameString
+	} `positional-args:"yes" required:"yes"`
+	IDArgs struct {
+		ID []int32
+	} `positional-args:"yes" required:"no"`
+}
+
 type ModelOpts struct {
 	List   ModelList   `command:"list"`
 	Update ModelUpdate `command:"update"`
+	Delete ModelDelete `command:"delete"`
 }
 
 var modelOpts = ModelOpts{}
@@ -210,6 +223,69 @@ func (options *ModelUpdate) Execute(args []string) error {
 
 	count := len(models)
 	FormatAndGenerateOutput(&options.OutputOptions, "{{.}} models updated.", "{{.}}", count)
+
+	return nil
+}
+
+func (options *ModelDelete) Execute(args []string) error {
+	conn, descriptor, err := InitReflectionClient()
+	if err != nil {
+		return err
+	}
+
+	defer conn.Close()
+
+	err = CheckModelName(descriptor, string(options.Args.ModelName))
+	if err != nil {
+		return err
+	}
+
+	if (len(options.IDArgs.ID) == 0 && len(options.Filter) == 0) ||
+		(len(options.IDArgs.ID) != 0 && len(options.Filter) != 0) {
+		return fmt.Errorf("Use either an ID or a --filter to specify which models to update")
+	}
+
+	queries, err := CommaSeparatedQueryToMap(options.Filter, true)
+	if err != nil {
+		return err
+	}
+
+	modelName := string(options.Args.ModelName)
+
+	var ids []int32
+
+	if len(options.IDArgs.ID) > 0 {
+		ids = options.IDArgs.ID
+	} else {
+		models, err := ListOrFilterModels(conn, descriptor, modelName, queries)
+		if err != nil {
+			return err
+		}
+		ids = make([]int32, len(models))
+		for i, model := range models {
+			ids[i] = model.GetFieldByName("id").(int32)
+		}
+		if len(ids) == 0 {
+			return fmt.Errorf("Filter matches no objects")
+		} else if len(ids) > 1 {
+			if !Confirmf("Filter matches %d objects. Continue [y/n] ? ", len(models)) {
+				return fmt.Errorf("Aborted by user")
+			}
+		}
+	}
+
+	count := 0
+	for _, id := range ids {
+		err = DeleteModel(conn, descriptor, modelName, id)
+		if err != nil {
+			log.Print(err)
+			continue
+		}
+
+		count++
+	}
+
+	FormatAndGenerateOutput(&options.OutputOptions, "{{.}} models deleted.", "{{.}}", count)
 
 	return nil
 }
