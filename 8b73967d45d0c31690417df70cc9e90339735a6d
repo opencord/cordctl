@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3c65a07a_27735aa6",
+        "filename": "README.md",
+        "patchSetId": 9
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2019-05-17T19:12:14Z",
+      "side": 1,
+      "message": "is this real `model list` with some filter to show only models that are available? so, i guess the question is should this be a separate command?",
+      "revId": "8b73967d45d0c31690417df70cc9e90339735a6d",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    }
+  ]
+}
