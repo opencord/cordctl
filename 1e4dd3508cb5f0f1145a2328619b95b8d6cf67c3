@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3404ab_0a86b2c7",
+        "filename": "commands/models.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2019-05-20T17:44:05Z",
+      "side": 1,
+      "message": "\"short\" form?",
+      "revId": "1e4dd3508cb5f0f1145a2328619b95b8d6cf67c3",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c49f2e3d_14de3da7",
+        "filename": "commands/models.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 276,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2019-05-20T17:44:05Z",
+      "side": 1,
+      "message": "For deletes, i have been implementing a \"continue\" on error, sort of following the pattern of docker. So if one fails they don\u0027t all fail.",
+      "revId": "1e4dd3508cb5f0f1145a2328619b95b8d6cf67c3",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    }
+  ]
+}
