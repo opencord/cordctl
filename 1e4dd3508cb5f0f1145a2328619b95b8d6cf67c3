@@ -33,6 +33,24 @@
       "revId": "1e4dd3508cb5f0f1145a2328619b95b8d6cf67c3",
       "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4920fb40_9706b461",
+        "filename": "commands/models.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 276,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2019-05-20T17:49:01Z",
+      "side": 1,
+      "message": "Good idea, will do.",
+      "parentUuid": "c49f2e3d_14de3da7",
+      "revId": "1e4dd3508cb5f0f1145a2328619b95b8d6cf67c3",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
     }
   ]
 }
