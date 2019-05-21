@@ -30,18 +30,20 @@ endif
 BUILDTIME    = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 LDFLAGS      = -ldflags \
-	'-X "github.com/opencord/cordctl/cli/version.Version=$(VERSION)"  \
-	 -X "github.com/opencord/cordctl/cli/version.GitCommit=$(GITCOMMIT)"  \
-	 -X "github.com/opencord/cordctl/cli/version.GitDirty=$(GITDIRTY)"  \
-	 -X "github.com/opencord/cordctl/cli/version.GoVersion=$(GOVERSION)"  \
-	 -X "github.com/opencord/cordctl/cli/version.Os=$$GOOS" \
-	 -X "github.com/opencord/cordctl/cli/version.Arch=$$GOARCH" \
-	 -X "github.com/opencord/cordctl/cli/version.BuildTime=$(BUILDTIME)"'
+	"-X github.com/opencord/cordctl/cli/version.Version=$(VERSION)  \
+	 -X github.com/opencord/cordctl/cli/version.GitCommit=$(GITCOMMIT)  \
+	 -X github.com/opencord/cordctl/cli/version.GitDirty=$(GITDIRTY)  \
+	 -X github.com/opencord/cordctl/cli/version.GoVersion=$(GOVERSION)  \
+	 -X github.com/opencord/cordctl/cli/version.Os=$$GOOS \
+	 -X github.com/opencord/cordctl/cli/version.Arch=$$GOARCH \
+	 -X github.com/opencord/cordctl/cli/version.BuildTime=$(BUILDTIME)"
 
 help:
 
 build: dependencies
-	GOOS=$(HOST_OS) GOARCH=$(HOST_ARCH) go build $(LDFLAGS) cmd/cordctl.go
+	export GOOS=$(HOST_OS) ;\
+	export GOARCH=$(HOST_ARCH) ;\
+	go build $(LDFLAGS) cmd/cordctl.go
 
 dependencies:
 	[ -d "vendor" ] || dep ensure
@@ -73,7 +75,9 @@ rel_os    = $(word 2, $(subst -, ,$(notdir $@)))
 rel_arch  = $(word 3, $(subst -, ,$(notdir $@)))
 
 $(RELEASE_BINS): dependencies
-	GOOS=$(rel_os) GOARCH=$(rel_arch) go build -v $(LDFLAGS) -o "$@" cmd/cordctl.go
+	export GOOS=$(rel_os) ;\
+	export GOARCH=$(rel_arch) ;\
+	go build -v $(LDFLAGS) -o "$@" cmd/cordctl.go
 
 release: $(RELEASE_BINS)
 

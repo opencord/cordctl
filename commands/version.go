@@ -18,6 +18,7 @@ package commands
 
 import (
 	"context"
+
 	"github.com/fullstorydev/grpcurl"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/jhump/protoreflect/dynamic"
@@ -50,7 +51,8 @@ type VersionOutput struct {
 }
 
 type VersionOpts struct {
-	OutputAs string `short:"o" long:"outputas" default:"table" choice:"table" choice:"json" choice:"yaml" description:"Type of output to generate"`
+	OutputAs   string `short:"o" long:"outputas" default:"table" choice:"table" choice:"json" choice:"yaml" description:"Type of output to generate"`
+	ClientOnly bool   `short:"c" long:"client-only" description:"Print only client version"`
 }
 
 var versionOpts = VersionOpts{}
@@ -79,14 +81,15 @@ func RegisterVersionCommands(parent *flags.Parser) {
 	parent.AddCommand("version", "display version", "Display client version", &versionOpts)
 }
 
-const DefaultFormat = `Client:
+const ClientFormat = `Client:
  Version         {{.Client.Version}}
  Go version:     {{.Client.GoVersion}}
  Git commit:     {{.Client.GitCommit}}
  Git dirty:      {{.Client.GitDirty}}
  Built:          {{.Client.BuildTime}}
  OS/Arch:        {{.Client.Os}}/{{.Client.Arch}}
-
+`
+const ServerFormat = `
 Server:
  Version         {{.Server.Version}}
  Python version: {{.Server.PythonVersion}}
@@ -95,49 +98,60 @@ Server:
  OS/Arch:        {{.Server.Os}}/{{.Server.Arch}}
 `
 
+const DefaultFormat = ClientFormat + ServerFormat
+
 func (options *VersionOpts) Execute(args []string) error {
-	conn, err := NewConnection()
-	if err != nil {
-		return err
+
+	if !options.ClientOnly {
+		conn, err := NewConnection()
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+
+		descriptor, method, err := GetReflectionMethod(conn, "xos.utility.GetVersion")
+		if err != nil {
+			return err
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+		defer cancel()
+
+		headers := GenerateHeaders()
+
+		h := &RpcEventHandler{}
+		err = grpcurl.InvokeRPC(ctx, descriptor, conn, method, headers, h, h.GetParams)
+		if err != nil {
+			return err
+		}
+
+		if h.Status != nil && h.Status.Err() != nil {
+			return h.Status.Err()
+		}
+
+		d, err := dynamic.AsDynamicMessage(h.Response)
+		if err != nil {
+			return err
+		}
+
+		versionInfo.Server.Version = d.GetFieldByName("version").(string)
+		versionInfo.Server.PythonVersion = d.GetFieldByName("pythonVersion").(string)
+		versionInfo.Server.GitCommit = d.GetFieldByName("gitCommit").(string)
+		versionInfo.Server.BuildTime = d.GetFieldByName("buildTime").(string)
+		versionInfo.Server.Os = d.GetFieldByName("os").(string)
+		versionInfo.Server.Arch = d.GetFieldByName("arch").(string)
 	}
-	defer conn.Close()
-
-	descriptor, method, err := GetReflectionMethod(conn, "xos.utility.GetVersion")
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
-	defer cancel()
-
-	headers := GenerateHeaders()
-
-	h := &RpcEventHandler{}
-	err = grpcurl.InvokeRPC(ctx, descriptor, conn, method, headers, h, h.GetParams)
-	if err != nil {
-		return err
-	}
-
-	if h.Status != nil && h.Status.Err() != nil {
-		return h.Status.Err()
-	}
-
-	d, err := dynamic.AsDynamicMessage(h.Response)
-	if err != nil {
-		return err
-	}
-
-	versionInfo.Server.Version = d.GetFieldByName("version").(string)
-	versionInfo.Server.PythonVersion = d.GetFieldByName("pythonVersion").(string)
-	versionInfo.Server.GitCommit = d.GetFieldByName("gitCommit").(string)
-	versionInfo.Server.BuildTime = d.GetFieldByName("buildTime").(string)
-	versionInfo.Server.Os = d.GetFieldByName("os").(string)
-	versionInfo.Server.Arch = d.GetFieldByName("arch").(string)
 
 	result := CommandResult{
-		Format:   format.Format(DefaultFormat),
+		// Format:   format.Format(DefaultFormat),
 		OutputAs: toOutputType(options.OutputAs),
 		Data:     versionInfo,
+	}
+
+	if options.ClientOnly {
+		result.Format = format.Format(ClientFormat)
+	} else {
+		result.Format = format.Format(DefaultFormat)
 	}
 
 	GenerateOutput(&result)
