@@ -34,8 +34,8 @@ LDFLAGS      = -ldflags \
 	 -X "github.com/opencord/cordctl/cli/version.GitCommit=$(GITCOMMIT)"  \
 	 -X "github.com/opencord/cordctl/cli/version.GitDirty=$(GITDIRTY)"  \
 	 -X "github.com/opencord/cordctl/cli/version.GoVersion=$(GOVERSION)"  \
-	 -X "github.com/opencord/cordctl/cli/version.Os=$$GOOS" \
-	 -X "github.com/opencord/cordctl/cli/version.Arch=$$GOARCH" \
+	 -X "github.com/opencord/cordctl/cli/version.Os=$(HOST_OS)" \
+	 -X "github.com/opencord/cordctl/cli/version.Arch=$(HOST_ARCH)" \
 	 -X "github.com/opencord/cordctl/cli/version.BuildTime=$(BUILDTIME)"'
 
 help:
