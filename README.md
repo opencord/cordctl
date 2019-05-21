@@ -58,7 +58,10 @@ cordctl completion bash >> $HOME/.bashrc
 
 * `cordctl modeltype list` ... list the types of models that XOS supports.
 * `cordctl model list <modelName>` ... list instances of the given model, with optional filtering.
-* `cordctl model update <modelName> <id> --set-json <json>` ... update models with new fields
+* `cordctl model update <modelName> <id> --set-json <json>` ... update models with new fields.
+* `cordctl model delete <modelName> <id>` ... delete models.
+* `cordctl model create <modelName> --set-json <json>` ... create a new model.
+* `cordctl model sync <modelName> <id>` ... wait for a model to be synchronized.
 
 ### Listing model types
 
@@ -114,6 +117,41 @@ cordctl model delete Slice 1
 # Delete the Slice named myslice
 cordctl model delete Slice --filter name=mylice
 ```
+
+### Creating Models
+
+The `model create` command allows you to create new instances of a model in XOS. To do this, specify the type of the model that you want to create and the set of fields that populate it. The set of fields can be set using a name=value syntax or by passing a JSON object. The following two examples are equivalent,
+
+```base
+# Create a Site by using set-field
+cordctl model create Site --set-field name=somesite,abbreviated_name=somesite,login_base=somesite
+
+# Create a Site by passing a json object
+cordctl model create Site --set-json '{"name": "somesite", "abbreviated_name": "somesite", "login_base": "somesite"}'
+```
+
+### Syncing Models
+
+All XOS operations are by nature asynchronous. When a model instance is created or updated, a synchronizer will typically run at a later time, enacting that model by applying its changes to some external component. After this is complete, the synchronizer updates the timestamps and other metadata to convey that the synchronization is complete. 
+
+Asynchronous operations are often inconvenient for test infrastructure, automation scripts, and even human operators. `cordctl` offers some features for synchronous behavior. 
+
+The first is the `model sync` command that can sync models based on ID or based on a filter. For example,
+
+```bash
+# Sync based on ID
+cordctl model sync ONOSApp 17
+
+# Sync based on a field filter
+cordctl model sync ONOSApp --filter name=olt
+```
+
+The second way to sync an object is to use the `--sync` command when doing a `model create` or a `model update`. For example,
+
+```bash
+cordctl model create ONOSApp --sync --set-field name=myapp,app_id=org.opencord.myapp
+```
+
 
 ## Development Environment
 

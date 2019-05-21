@@ -24,8 +24,10 @@ import (
 )
 
 const (
+	DEFAULT_CREATE_FORMAT = "table{{ .Id }}\t{{ .Message }}"
 	DEFAULT_DELETE_FORMAT = "table{{ .Id }}\t{{ .Message }}"
 	DEFAULT_UPDATE_FORMAT = "table{{ .Id }}\t{{ .Message }}"
+	DEFAULT_SYNC_FORMAT   = "table{{ .Id }}\t{{ .Message }}"
 )
 
 type ModelNameString string
@@ -43,10 +45,12 @@ type ModelList struct {
 
 type ModelUpdate struct {
 	OutputOptions
-	Filter    string `short:"f" long:"filter" description:"Comma-separated list of filters"`
-	SetFields string `long:"set-field" description:"Comma-separated list of field=value to set"`
-	SetJSON   string `long:"set-json" description:"JSON dictionary to use for settings fields"`
-	Args      struct {
+	Unbuffered bool   `short:"u" long:"unbuffered" description:"Do not buffer console output and suppress default output processor"`
+	Filter     string `short:"f" long:"filter" description:"Comma-separated list of filters"`
+	SetFields  string `long:"set-field" description:"Comma-separated list of field=value to set"`
+	SetJSON    string `long:"set-json" description:"JSON dictionary to use for settings fields"`
+	Sync       bool   `long:"sync" description:"Synchronize before returning"`
+	Args       struct {
 		ModelName ModelNameString
 	} `positional-args:"yes" required:"yes"`
 	IDArgs struct {
@@ -56,8 +60,32 @@ type ModelUpdate struct {
 
 type ModelDelete struct {
 	OutputOptions
-	Filter string `short:"f" long:"filter" description:"Comma-separated list of filters"`
-	Args   struct {
+	Unbuffered bool   `short:"u" long:"unbuffered" description:"Do not buffer console output and suppress default output processor"`
+	Filter     string `short:"f" long:"filter" description:"Comma-separated list of filters"`
+	Args       struct {
+		ModelName ModelNameString
+	} `positional-args:"yes" required:"yes"`
+	IDArgs struct {
+		ID []int32
+	} `positional-args:"yes" required:"no"`
+}
+
+type ModelCreate struct {
+	OutputOptions
+	Unbuffered bool   `short:"u" long:"unbuffered" description:"Do not buffer console output"`
+	SetFields  string `long:"set-field" description:"Comma-separated list of field=value to set"`
+	SetJSON    string `long:"set-json" description:"JSON dictionary to use for settings fields"`
+	Sync       bool   `long:"sync" description:"Synchronize before returning"`
+	Args       struct {
+		ModelName ModelNameString
+	} `positional-args:"yes" required:"yes"`
+}
+
+type ModelSync struct {
+	OutputOptions
+	Unbuffered bool   `short:"u" long:"unbuffered" description:"Do not buffer console output and suppress default output processor"`
+	Filter     string `short:"f" long:"filter" description:"Comma-separated list of filters"`
+	Args       struct {
 		ModelName ModelNameString
 	} `positional-args:"yes" required:"yes"`
 	IDArgs struct {
@@ -69,16 +97,18 @@ type ModelOpts struct {
 	List   ModelList   `command:"list"`
 	Update ModelUpdate `command:"update"`
 	Delete ModelDelete `command:"delete"`
+	Create ModelCreate `command:"create"`
+	Sync   ModelSync   `command:"sync"`
 }
 
 type ModelStatusOutputRow struct {
-	Id      int32  `json:"id"`
-	Message string `json:"message"`
+	Id      interface{} `json:"id"`
+	Message string      `json:"message"`
 }
 
 type ModelStatusOutput struct {
-	Rows  []ModelStatusOutputRow
-	Quiet bool
+	Rows       []ModelStatusOutputRow
+	Unbuffered bool
 }
 
 var modelOpts = ModelOpts{}
@@ -87,27 +117,33 @@ func RegisterModelCommands(parser *flags.Parser) {
 	parser.AddCommand("model", "model commands", "Commands to query and manipulate XOS models", &modelOpts)
 }
 
-func InitModelStatusOutput(quiet bool, count int) ModelStatusOutput {
-	if quiet {
-		return ModelStatusOutput{Quiet: quiet}
-	} else {
-		return ModelStatusOutput{Rows: make([]ModelStatusOutputRow, count), Quiet: quiet}
-	}
+// Initialize ModelStatusOutput structure, creating a row for each model that will be output
+func InitModelStatusOutput(unbuffered bool, count int) ModelStatusOutput {
+	return ModelStatusOutput{Rows: make([]ModelStatusOutputRow, count), Unbuffered: unbuffered}
 }
 
-func UpdateModelStatusOutput(output *ModelStatusOutput, i int, id int32, status string, err error) {
+// Update model status output row for the model
+//    If unbuffered is set then we will output directly to the console. Regardless of the unbuffered
+//    setting, we always update the row, as callers may check that row for status.
+// Args:
+//    output - ModelStatusOutput struct to update
+//    i - index of row to update
+//    id - id of model, <nil> if no model exists
+//    status - status text to set if there is no error
+//    errror - if non-nil, then apply error text instead of status text
+//    final - true if successful status should be reported, false if successful status is yet to come
+
+func UpdateModelStatusOutput(output *ModelStatusOutput, i int, id interface{}, status string, err error, final bool) {
 	if err != nil {
-		if output.Quiet {
-			fmt.Printf("%d: %s\n", id, HumanReadableError(err))
-		} else {
-			output.Rows[i] = ModelStatusOutputRow{Id: id, Message: HumanReadableError(err)}
+		if output.Unbuffered {
+			fmt.Printf("%v: %s\n", id, HumanReadableError(err))
 		}
+		output.Rows[i] = ModelStatusOutputRow{Id: id, Message: HumanReadableError(err)}
 	} else {
-		if output.Quiet {
+		if output.Unbuffered && final {
 			fmt.Println(id)
-		} else {
-			output.Rows[i] = ModelStatusOutputRow{Id: id, Message: status}
 		}
+		output.Rows[i] = ModelStatusOutputRow{Id: id, Message: status}
 	}
 }
 
@@ -254,17 +290,29 @@ func (options *ModelUpdate) Execute(args []string) error {
 		fields[fieldName] = proto_value
 	}
 
-	modelStatusOutput := InitModelStatusOutput(options.Quiet, len(models))
+	modelStatusOutput := InitModelStatusOutput(options.Unbuffered, len(models))
 	for i, model := range models {
 		id := model.GetFieldByName("id").(int32)
 		fields["id"] = id
 		err := UpdateModel(conn, descriptor, modelName, fields)
 
-		UpdateModelStatusOutput(&modelStatusOutput, i, id, "Updated", err)
+		UpdateModelStatusOutput(&modelStatusOutput, i, id, "Updated", err, !options.Sync)
 	}
 
-	if !options.Quiet {
-		FormatAndGenerateOutput(&options.OutputOptions, DEFAULT_UPDATE_FORMAT, "", modelStatusOutput.Rows)
+	if options.Sync {
+		for i, model := range models {
+			id := model.GetFieldByName("id").(int32)
+			if modelStatusOutput.Rows[i].Message == "Updated" {
+				conditional_printf(!options.Quiet, "Wait for sync: %d ", id)
+				conn, _, err = GetModelWithRetry(conn, descriptor, modelName, id, GM_UNTIL_ENACTED|Ternary_uint32(options.Quiet, GM_QUIET, 0))
+				conditional_printf(!options.Quiet, "\n")
+				UpdateModelStatusOutput(&modelStatusOutput, i, id, "Enacted", err, true)
+			}
+		}
+	}
+
+	if !options.Unbuffered {
+		FormatAndGenerateOutput(&options.OutputOptions, DEFAULT_UPDATE_FORMAT, DEFAULT_UPDATE_FORMAT, modelStatusOutput.Rows)
 	}
 
 	return nil
@@ -285,7 +333,7 @@ func (options *ModelDelete) Execute(args []string) error {
 
 	if (len(options.IDArgs.ID) == 0 && len(options.Filter) == 0) ||
 		(len(options.IDArgs.ID) != 0 && len(options.Filter) != 0) {
-		return fmt.Errorf("Use either an ID or a --filter to specify which models to update")
+		return fmt.Errorf("Use either an ID or a --filter to specify which models to delete")
 	}
 
 	queries, err := CommaSeparatedQueryToMap(options.Filter, true)
@@ -317,14 +365,133 @@ func (options *ModelDelete) Execute(args []string) error {
 		}
 	}
 
-	modelStatusOutput := InitModelStatusOutput(options.Quiet, len(ids))
+	modelStatusOutput := InitModelStatusOutput(options.Unbuffered, len(ids))
 	for i, id := range ids {
 		err = DeleteModel(conn, descriptor, modelName, id)
-		UpdateModelStatusOutput(&modelStatusOutput, i, id, "Deleted", err)
+		UpdateModelStatusOutput(&modelStatusOutput, i, id, "Deleted", err, true)
 	}
 
-	if !options.Quiet {
-		FormatAndGenerateOutput(&options.OutputOptions, DEFAULT_DELETE_FORMAT, "", modelStatusOutput.Rows)
+	if !options.Unbuffered {
+		FormatAndGenerateOutput(&options.OutputOptions, DEFAULT_DELETE_FORMAT, DEFAULT_DELETE_FORMAT, modelStatusOutput.Rows)
+	}
+
+	return nil
+}
+
+func (options *ModelCreate) Execute(args []string) error {
+	conn, descriptor, err := InitReflectionClient()
+	if err != nil {
+		return err
+	}
+
+	defer conn.Close()
+
+	err = CheckModelName(descriptor, string(options.Args.ModelName))
+	if err != nil {
+		return err
+	}
+
+	updates, err := CommaSeparatedQueryToMap(options.SetFields, true)
+	if err != nil {
+		return err
+	}
+
+	modelName := string(options.Args.ModelName)
+
+	fields := make(map[string]interface{})
+
+	if len(options.SetJSON) > 0 {
+		fields["_json"] = []byte(options.SetJSON)
+	}
+
+	for fieldName, value := range updates {
+		value = value[1:]
+		proto_value, err := TypeConvert(descriptor, modelName, fieldName, value)
+		if err != nil {
+			return err
+		}
+		fields[fieldName] = proto_value
+	}
+
+	modelStatusOutput := InitModelStatusOutput(options.Unbuffered, 1)
+
+	err = CreateModel(conn, descriptor, modelName, fields)
+	UpdateModelStatusOutput(&modelStatusOutput, 0, fields["id"], "Created", err, !options.Sync)
+
+	if options.Sync {
+		if modelStatusOutput.Rows[0].Message == "Created" {
+			id := fields["id"].(int32)
+			conditional_printf(!options.Quiet, "Wait for sync: %d ", id)
+			conn, _, err = GetModelWithRetry(conn, descriptor, modelName, id, GM_UNTIL_ENACTED|Ternary_uint32(options.Quiet, GM_QUIET, 0))
+			conditional_printf(!options.Quiet, "\n")
+			UpdateModelStatusOutput(&modelStatusOutput, 0, id, "Enacted", err, true)
+		}
+	}
+
+	if !options.Unbuffered {
+		FormatAndGenerateOutput(&options.OutputOptions, DEFAULT_CREATE_FORMAT, DEFAULT_CREATE_FORMAT, modelStatusOutput.Rows)
+	}
+
+	return nil
+}
+
+func (options *ModelSync) Execute(args []string) error {
+	conn, descriptor, err := InitReflectionClient()
+	if err != nil {
+		return err
+	}
+
+	defer conn.Close()
+
+	err = CheckModelName(descriptor, string(options.Args.ModelName))
+	if err != nil {
+		return err
+	}
+
+	if (len(options.IDArgs.ID) == 0 && len(options.Filter) == 0) ||
+		(len(options.IDArgs.ID) != 0 && len(options.Filter) != 0) {
+		return fmt.Errorf("Use either an ID or a --filter to specify which models to sync")
+	}
+
+	queries, err := CommaSeparatedQueryToMap(options.Filter, true)
+	if err != nil {
+		return err
+	}
+
+	modelName := string(options.Args.ModelName)
+
+	var ids []int32
+
+	if len(options.IDArgs.ID) > 0 {
+		ids = options.IDArgs.ID
+	} else {
+		models, err := ListOrFilterModels(conn, descriptor, modelName, queries)
+		if err != nil {
+			return err
+		}
+		ids = make([]int32, len(models))
+		for i, model := range models {
+			ids[i] = model.GetFieldByName("id").(int32)
+		}
+		if len(ids) == 0 {
+			return fmt.Errorf("Filter matches no objects")
+		} else if len(ids) > 1 {
+			if !Confirmf("Filter matches %d objects. Continue [y/n] ? ", len(models)) {
+				return fmt.Errorf("Aborted by user")
+			}
+		}
+	}
+
+	modelStatusOutput := InitModelStatusOutput(options.Unbuffered, len(ids))
+	for i, id := range ids {
+		conditional_printf(!options.Quiet, "Wait for sync: %d ", id)
+		conn, _, err = GetModelWithRetry(conn, descriptor, modelName, id, GM_UNTIL_ENACTED|Ternary_uint32(options.Quiet, GM_QUIET, 0))
+		conditional_printf(!options.Quiet, "\n")
+		UpdateModelStatusOutput(&modelStatusOutput, i, id, "Enacted", err, true)
+	}
+
+	if !options.Unbuffered {
+		FormatAndGenerateOutput(&options.OutputOptions, DEFAULT_SYNC_FORMAT, DEFAULT_SYNC_FORMAT, modelStatusOutput.Rows)
 	}
 
 	return nil
