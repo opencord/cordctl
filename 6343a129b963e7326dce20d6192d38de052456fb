@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a650e51a_3587b54d",
+        "filename": "docs/README.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1000011
+      },
+      "writtenOn": "2019-05-22T18:00:01Z",
+      "side": 1,
+      "message": "Did you want a \"how to contribute\" link that goes back to the CORD guide or wiki pages about gerrit?",
+      "range": {
+        "startLine": 8,
+        "startChar": 161,
+        "endLine": 11,
+        "endChar": 0
+      },
+      "revId": "6343a129b963e7326dce20d6192d38de052456fb",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": true
+    }
+  ]
+}
