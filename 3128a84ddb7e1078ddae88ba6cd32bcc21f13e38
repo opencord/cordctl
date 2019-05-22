@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "487445ec_4b72ee68",
+        "filename": "Makefile",
+        "patchSetId": 5
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2019-05-22T16:38:31Z",
+      "side": 1,
+      "message": "Does this preserve @zdw\u0027s release target? I think they\u0027re using the same LDFLAGS ?",
+      "range": {
+        "startLine": 37,
+        "startChar": 2,
+        "endLine": 37,
+        "endChar": 60
+      },
+      "revId": "3128a84ddb7e1078ddae88ba6cd32bcc21f13e38",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    }
+  ]
+}
