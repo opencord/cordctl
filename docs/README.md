@@ -3,6 +3,12 @@
 
 `cordctl` is a command-line tool for interacting with XOS. XOS is part of the SEBA NEM and part of CORD, so by extension this tool is useful for interacting with SEBA and CORD deployments. `cordctl` makes use of gRPC to connect to XOS and may by used for administration of a remote pod, assuming the appropriate firewall rules are configured. Typically XOS exposes its gRPC API on port `30011`.
 
+## Obtaining cordctl
+
+Binaries for `cordctl` are published at https://github.com/opencord/cordctl/releases and may be directly downloaded and used on Linux, MAC, or Windows platforms.
+
+Additionally, the source for `cordctl` is available at https://github.com/opencord/cordctl and may be downloaded and built. `cordctl` is written in golang, and go version 1.12 or above must be installed in order to build from source.
+
 ## Configuration
 
 Typically a configuration file should be placed at `~/.cord/config` as `cordctl` will automatically look in that location. Alternatively, the `-c` command-line option may be used to specify a different config file location. Below is a sample config file:
@@ -15,7 +21,9 @@ grpc:
   timeout: 10s
 ```
 
-The `server`, `username`, and `password` parameters are essential to configure access to the XOS container running on your pod. 
+The `server`, `username`, and `password` parameters are essential to configure access to the XOS container running on your pod.
+
+To generate a config file on stdout from the currently configured settings, the command `cordctl config` may be used.
 
 ## Getting Help
 
