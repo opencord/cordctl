@@ -101,6 +101,26 @@ Server:
 const DefaultFormat = ClientFormat + ServerFormat
 
 func (options *VersionOpts) Execute(args []string) error {
+	conn, descriptor, err := InitReflectionClient()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+	defer cancel()
+
+	headers := GenerateHeaders()
+
+	h := &RpcEventHandler{}
+	err = grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.utility.GetVersion", headers, h, h.GetParams)
+	if err != nil {
+		return err
+	}
+
+	if h.Status != nil && h.Status.Err() != nil {
+		return h.Status.Err()
+	}
 
 	if !options.ClientOnly {
 		conn, err := NewConnection()
