@@ -38,6 +38,13 @@ LDFLAGS      = -ldflags \
 	 -X github.com/opencord/cordctl/cli/version.Arch=$$GOARCH \
 	 -X github.com/opencord/cordctl/cli/version.BuildTime=$(BUILDTIME)"
 
+# Settings for running with mock server
+TEST_PROTOSET = $(shell pwd)/mock/xos-core.protoset
+TEST_MOCK_DIR = $(shell pwd)/mock
+TEST_SERVER = localhost:50051
+TEST_USERNAME = admin@opencord.org
+TEST_PASSWORD = letmein
+
 help:
 
 build: dependencies
@@ -55,12 +62,19 @@ lint: dependencies
 
 test: dependencies
 	@mkdir -p ./tests/results
-	@go test -v -coverprofile ./tests/results/go-test-coverage.out -covermode count ./... 2>&1 | tee ./tests/results/go-test-results.out ;\
+	@set +e; \
+	CORDCTL_PROTOSET=$(TEST_PROTOSET)\
+         CORDCTL_SERVER=$(TEST_SERVER) \
+         CORDCTL_MOCK_DIR=$(TEST_MOCK_DIR) \
+         CORDCTL_USERNAME=$(TEST_USERNAME) \
+         CORDCTL_PASSWORD=$(TEST_PASSWORD) \
+         go test -v -coverprofile ./tests/results/go-test-coverage.out -covermode count ./... 2>&1 | tee ./tests/results/go-test-results.out ;\
 	RETURN=$$? ;\
 	go-junit-report < ./tests/results/go-test-results.out > ./tests/results/go-test-results.xml ;\
 	gocover-cobertura < ./tests/results/go-test-coverage.out > ./tests/results/go-test-coverage.xml ;\
+	cd mock; \
+	docker-compose down; \
 	exit $$RETURN
-
 
 # Release related items
 # Generates binaries in $RELEASE_DIR with name $RELEASE_NAME-$RELEASE_OS_ARCH
