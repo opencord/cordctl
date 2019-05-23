@@ -1,0 +1,9 @@
+version: '2'
+services:
+  mock-server:
+    container_name: xos-mock-grpc-server
+    build: .
+    ports:
+    - "50051:50051"
+    environment:
+    - DATA_JSON
