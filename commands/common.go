@@ -47,7 +47,15 @@ func InitReflectionClient() (*grpc.ClientConn, grpcurl.DescriptorSource, error) 
 	refClient := grpcreflect.NewClient(context.Background(), reflectpb.NewServerReflectionClient(conn))
 	defer refClient.Reset()
 
-	descriptor := grpcurl.DescriptorSourceFromServer(context.Background(), refClient)
+	var descriptor grpcurl.DescriptorSource
+	if GlobalConfig.Protoset != "" {
+		descriptor, err = grpcurl.DescriptorSourceFromProtoSets(GlobalConfig.Protoset)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		descriptor = grpcurl.DescriptorSourceFromServer(context.Background(), refClient)
+	}
 
 	return conn, descriptor, nil
 }
