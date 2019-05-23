@@ -55,6 +55,7 @@ type GlobalConfigSpec struct {
 	Server   string        `yaml:"server"`
 	Username string        `yaml:"username"`
 	Password string        `yaml:"password"`
+	Protoset string        `yaml:"protoset"`
 	Tls      TlsConfigSpec `yaml:"tls"`
 	Grpc     GrpcConfigSpec
 }
@@ -74,6 +75,7 @@ var GlobalOptions struct {
 	Server   string `short:"s" long:"server" default:"" value-name:"SERVER:PORT" description:"IP/Host and port of XOS"`
 	Username string `short:"u" long:"username" value-name:"USERNAME" default:"" description:"Username to authenticate with XOS"`
 	Password string `short:"p" long:"password" value-name:"PASSWORD" default:"" description:"Password to authenticate with XOS"`
+	Protoset string `long:"protoset" value-name:"FILENAME" description:"Load protobuf definitions from protoset instead of reflection api"`
 	Debug    bool   `short:"d" long:"debug" description:"Enable debug mode"`
 	UseTLS   bool   `long:"tls" description:"Use TLS"`
 	CACert   string `long:"tlscacert" value-name:"CA_CERT_FILE" description:"Trust certs signed only by this CA"`
@@ -142,6 +144,9 @@ func ProcessGlobalOptions() {
 	}
 	if GlobalOptions.Password != "" {
 		GlobalConfig.Password = GlobalOptions.Password
+	}
+	if GlobalOptions.Protoset != "" {
+		GlobalConfig.Protoset = GlobalOptions.Protoset
 	}
 
 	// Generate error messages for required settings
