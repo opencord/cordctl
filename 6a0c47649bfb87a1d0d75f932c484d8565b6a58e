@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4dd5963c_2062144d",
+        "filename": "mock/Dockerfile",
+        "patchSetId": 8
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1000007
+      },
+      "writtenOn": "2019-05-23T17:35:50Z",
+      "side": 1,
+      "message": "these operations looks a little strange to me, but I have to look into the ciena/grpc-mock container to understand the reason... in generat to install a package we shouldn\u0027t need to clone the repo, we should be able to execute: \"npm install grpc-mock@0.5.1\"",
+      "range": {
+        "startLine": 38,
+        "startChar": 0,
+        "endLine": 42,
+        "endChar": 18
+      },
+      "revId": "6a0c47649bfb87a1d0d75f932c484d8565b6a58e",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    }
+  ]
+}
