@@ -47,7 +47,19 @@ func InitReflectionClient() (*grpc.ClientConn, grpcurl.DescriptorSource, error) 
 	refClient := grpcreflect.NewClient(context.Background(), reflectpb.NewServerReflectionClient(conn))
 	defer refClient.Reset()
 
-	descriptor := grpcurl.DescriptorSourceFromServer(context.Background(), refClient)
+	// Intended method of use is to download the protos via reflection API. Loading the
+	// protos from a file is supported for unit testing, as the mock server does not
+	// support the reflection API.
+
+	var descriptor grpcurl.DescriptorSource
+	if GlobalConfig.Protoset != "" {
+		descriptor, err = grpcurl.DescriptorSourceFromProtoSets(GlobalConfig.Protoset)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		descriptor = grpcurl.DescriptorSourceFromServer(context.Background(), refClient)
+	}
 
 	return conn, descriptor, nil
 }
