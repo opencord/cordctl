@@ -22,6 +22,30 @@
       "revId": "6a0c47649bfb87a1d0d75f932c484d8565b6a58e",
       "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a98f2c8f_6356bd3c",
+        "filename": "mock/Dockerfile",
+        "patchSetId": 8
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2019-05-23T19:33:26Z",
+      "side": 1,
+      "message": "I\u0027m planning on cleaning this up prior to merge. We\u0027ve moved from using the `grpc-mock` in Ciena\u0027s `ciena/grpc-mock` docker container to using our own fork, at least until we get the changes pushed back to Ciena\u0027s master. Then we can go back to using their container again.",
+      "parentUuid": "4dd5963c_2062144d",
+      "range": {
+        "startLine": 38,
+        "startChar": 0,
+        "endLine": 42,
+        "endChar": 18
+      },
+      "revId": "6a0c47649bfb87a1d0d75f932c484d8565b6a58e",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
     }
   ]
 }
