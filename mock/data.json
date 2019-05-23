@@ -1,0 +1,34 @@
+[
+    {
+        "method": "GetVersion",
+        "input": ".*",
+        "output": {
+          "version": "3.2.6",
+          "pythonVersion": "2.7.16 (default, May  6 2019, 19:35:26)",
+          "gitCommit": "b0df1bf6ed1698285eda6a6725c5da0c80aa4aee",
+          "buildTime": "2019-05-20T17:04:14Z",
+          "os": "linux",
+          "arch": "x86_64"
+        }
+    },
+    {
+        "method": "GetSlice",
+        "input": ".*",
+        "output": {
+          "id": 1,
+          "name": "mockslice1",
+          "site_id": 1
+        }
+    },
+    {
+        "method": "ListSlice",
+        "input": ".*",
+        "output": {
+          "items": [{
+            "id": 1,
+            "name": "mockslice1",
+            "site_id": 1
+          }]
+        }
+    }
+]
