@@ -38,6 +38,9 @@ LDFLAGS      = -ldflags \
 	 -X github.com/opencord/cordctl/cli/version.Arch=$$GOARCH \
 	 -X github.com/opencord/cordctl/cli/version.BuildTime=$(BUILDTIME)"
 
+TESTPROTOSET = $(shell pwd)/mock/xos-core.protoset
+TESTSERVER = localhost:50051
+
 help:
 
 build: dependencies
@@ -55,7 +58,7 @@ lint: dependencies
 
 test: dependencies
 	@mkdir -p ./tests/results
-	@go test -v -coverprofile ./tests/results/go-test-coverage.out -covermode count ./... 2>&1 | tee ./tests/results/go-test-results.out ;\
+	@CORDCTL_PROTOSET=$(TESTPROTOSET) CORDCTL_SERVER=$(TESTSERVER) go test -v -coverprofile ./tests/results/go-test-coverage.out -covermode count ./... 2>&1 | tee ./tests/results/go-test-results.out ;\
 	RETURN=$$? ;\
 	go-junit-report < ./tests/results/go-test-results.out > ./tests/results/go-test-results.xml ;\
 	gocover-cobertura < ./tests/results/go-test-coverage.out > ./tests/results/go-test-coverage.xml ;\
