@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0c6ce612_390ec7f8",
+        "filename": "Makefile",
+        "patchSetId": 20
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2019-05-24T21:22:01Z",
+      "side": 1,
+      "message": "is the docker-compose down called when tests fail?",
+      "revId": "2671ed067ca19fd804a0a7443bc83be3cdd7065b",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1e9c0497_c5c2525a",
+        "filename": "mock/mock.sh",
+        "patchSetId": 20
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2019-05-24T21:22:01Z",
+      "side": 1,
+      "message": "VOLTHA or CORD for you?",
+      "range": {
+        "startLine": 24,
+        "startChar": 35,
+        "endLine": 24,
+        "endChar": 41
+      },
+      "revId": "2671ed067ca19fd804a0a7443bc83be3cdd7065b",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "63a542ac_799a323f",
+        "filename": "mock/mock.sh",
+        "patchSetId": 20
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2019-05-24T21:22:01Z",
+      "side": 1,
+      "message": "VOLTHA or CORD for you?",
+      "range": {
+        "startLine": 30,
+        "startChar": 35,
+        "endLine": 30,
+        "endChar": 41
+      },
+      "revId": "2671ed067ca19fd804a0a7443bc83be3cdd7065b",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    }
+  ]
+}
