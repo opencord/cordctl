@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "a988f301_b7038473",
+        "filename": "Makefile",
+        "patchSetId": 20
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 1000011
+      },
+      "writtenOn": "2019-05-24T22:30:12Z",
+      "side": 1,
+      "message": "`set -e -o pipefail` above will cause the shell to exit any time there\u0027s a nonzero exit code.\n\nMight split test into two targets , then run them both with `make -k`.   The test automation supports this, with a minor tweak.",
+      "parentUuid": "0c6ce612_390ec7f8",
+      "revId": "2671ed067ca19fd804a0a7443bc83be3cdd7065b",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1e9c0497_c5c2525a",
         "filename": "mock/mock.sh",
         "patchSetId": 20
