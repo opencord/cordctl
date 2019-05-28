@@ -37,6 +37,46 @@
     },
     {
       "key": {
+        "uuid": "335739ec_146b93b9",
+        "filename": "commands/command.go",
+        "patchSetId": 20
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2019-05-28T15:06:51Z",
+      "side": 1,
+      "message": "Just from a Go perspective, you don\u0027t need to specify the type when you assign here as Go will set the type automatically.",
+      "revId": "2671ed067ca19fd804a0a7443bc83be3cdd7065b",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f14f85d3_1562c2f1",
+        "filename": "commands/common.go",
+        "patchSetId": 20
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2019-05-28T15:06:51Z",
+      "side": 1,
+      "message": "Is there a concern that downloading the protos might lead to an issue that the protos downloaded are different than what the code expects and then everything breaks? \n\nWhen you are dynamically pulling the protos from somewhere (either download or reflection) changes in the remote protos might be incompatible with the expected parameters, etc.",
+      "range": {
+        "startLine": 50,
+        "startChar": 4,
+        "endLine": 50,
+        "endChar": 12
+      },
+      "revId": "2671ed067ca19fd804a0a7443bc83be3cdd7065b",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1e9c0497_c5c2525a",
         "filename": "mock/mock.sh",
         "patchSetId": 20
