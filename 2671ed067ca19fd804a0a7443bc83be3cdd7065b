@@ -54,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "c947b159_d04d5a3b",
+        "filename": "commands/command.go",
+        "patchSetId": 20
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2019-05-28T17:12:31Z",
+      "side": 1,
+      "message": "If I don\u0027t specify the type, then it ends up declared as an *os.File instead of an io.Writer (or an interface{}).",
+      "parentUuid": "335739ec_146b93b9",
+      "revId": "2671ed067ca19fd804a0a7443bc83be3cdd7065b",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f14f85d3_1562c2f1",
         "filename": "commands/common.go",
         "patchSetId": 20
@@ -77,6 +95,30 @@
     },
     {
       "key": {
+        "uuid": "52f86744_c2f5f877",
+        "filename": "commands/common.go",
+        "patchSetId": 20
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2019-05-28T17:12:31Z",
+      "side": 1,
+      "message": "At some point there\u0027s going to have to be a version comparison between the client and server, and the client will declare itself incompatible with certain server versions. If our semver is maintained diligently enough then it might be sufficient to compare the major of the semver and make sure it is what is expected. I haven\u0027t implemented this check yet.\n\nI think kubectl, for example, does similar. If the client and the server are too far apart, then it\u0027ll punt and throw an error message.",
+      "parentUuid": "f14f85d3_1562c2f1",
+      "range": {
+        "startLine": 50,
+        "startChar": 4,
+        "endLine": 50,
+        "endChar": 12
+      },
+      "revId": "2671ed067ca19fd804a0a7443bc83be3cdd7065b",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1e9c0497_c5c2525a",
         "filename": "mock/mock.sh",
         "patchSetId": 20
@@ -88,6 +130,30 @@
       "writtenOn": "2019-05-24T21:22:01Z",
       "side": 1,
       "message": "VOLTHA or CORD for you?",
+      "range": {
+        "startLine": 24,
+        "startChar": 35,
+        "endLine": 24,
+        "endChar": 41
+      },
+      "revId": "2671ed067ca19fd804a0a7443bc83be3cdd7065b",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "442693e6_44917d90",
+        "filename": "mock/mock.sh",
+        "patchSetId": 20
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2019-05-28T17:12:31Z",
+      "side": 1,
+      "message": "I\u0027m thinking \"XOS\"...",
+      "parentUuid": "1e9c0497_c5c2525a",
       "range": {
         "startLine": 24,
         "startChar": 35,
