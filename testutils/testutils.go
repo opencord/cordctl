@@ -16,10 +16,13 @@
 package testutils
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
+	"reflect"
 	"strings"
+	"testing"
 )
 
 const (
@@ -90,4 +93,27 @@ func IsReady() (bool, error) {
 	}
 
 	return strings.Contains(string(out), "Listening for requests"), nil
+}
+
+// Assert that two JSON-encoded strings are equal
+func AssertJSONEqual(t *testing.T, actual string, expected string) error {
+	var expected_json interface{}
+	err := json.Unmarshal([]byte(expected), &expected_json)
+	if err != nil {
+		t.Errorf("Failed to unmarshal expected json %s", expected)
+		return err
+	}
+
+	var actual_json interface{}
+	err = json.Unmarshal([]byte(actual), &actual_json)
+	if err != nil {
+		t.Errorf("Failed to unmarshal actual json %s", actual_json)
+		return err
+	}
+
+	if !reflect.DeepEqual(expected_json, actual_json) {
+		t.Errorf("Actual json does not match expected json\nACTUAL:\n%s\nEXPECTED:\n%s", expected, actual)
+	}
+
+	return nil
 }
