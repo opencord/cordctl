@@ -17,6 +17,7 @@
 package commands
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	flags "github.com/jessevdk/go-flags"
@@ -67,6 +68,8 @@ func (options *BackupCreate) Execute(args []string) error {
 	}
 	defer conn.Close()
 
+	ctx := context.Background() // TODO: Implement a sync timeout
+
 	// We might close and reopen the connection befor we do the DownloadFile,
 	// so make sure we've downloaded the service descriptor.
 	_, err = descriptor.FindSymbol("xos.filetransfer")
@@ -90,7 +93,7 @@ func (options *BackupCreate) Execute(args []string) error {
 	// STEP 2: Wait for the operation to complete
 
 	flags := GM_UNTIL_ENACTED | GM_UNTIL_FOUND | Ternary_uint32(options.Quiet, GM_QUIET, 0)
-	conn, completed_backupop, err := GetModelWithRetry(conn, descriptor, "BackupOperation", backupop["id"].(int32), flags)
+	conn, completed_backupop, err := GetModelWithRetry(ctx, conn, descriptor, "BackupOperation", backupop["id"].(int32), flags)
 	if err != nil {
 		return err
 	}
@@ -111,7 +114,7 @@ func (options *BackupCreate) Execute(args []string) error {
 		return errors.New("BackupOp.file_id is not set")
 	}
 
-	completed_backupfile, err := GetModel(conn, descriptor, "BackupFile", backupfile_id)
+	completed_backupfile, err := GetModel(ctx, conn, descriptor, "BackupFile", backupfile_id)
 	if err != nil {
 		return err
 	}
@@ -155,6 +158,8 @@ func (options *BackupRestore) Execute(args []string) error {
 		return err
 	}
 	defer conn.Close()
+
+	ctx := context.Background() // TODO: Implement a sync timeout
 
 	local_name := options.Args.LocalFileName
 	remote_name := "cordctl-restore-" + time.Now().Format("20060102T150405Z")
@@ -209,7 +214,7 @@ func (options *BackupRestore) Execute(args []string) error {
 
 	flags := GM_UNTIL_ENACTED | GM_UNTIL_FOUND | GM_UNTIL_STATUS | Ternary_uint32(options.Quiet, GM_QUIET, 0)
 	queries := map[string]string{"uuid": backupop["uuid"].(string)}
-	conn, completed_backupop, err := FindModelWithRetry(conn, descriptor, "BackupOperation", queries, flags)
+	conn, completed_backupop, err := FindModelWithRetry(ctx, conn, descriptor, "BackupOperation", queries, flags)
 	if err != nil {
 		return err
 	}
