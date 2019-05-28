@@ -28,7 +28,55 @@
             "id": 1,
             "name": "mockslice1",
             "site_id": 1
+          },
+          {
+            "id": 2,
+            "name": "mockslice2",
+            "site_id": 1
           }]
         }
+    },
+    {
+        "method": "FilterSlice",
+        "input": {"elements": [{"operator": 0, "name": "id", "iValue": 1}]},
+        "output": {
+          "items": [{
+            "id": 1,
+            "name": "mockslice1",
+            "site_id": 1
+          }]
+        }
+    },
+    {
+        "method": "FilterSlice",
+        "input": {"elements": [{"operator": 0, "name": "name", "sValue": "mockslice2"}]},
+        "output": {
+          "items": [{
+            "id": 2,
+            "name": "mockslice2",
+            "site_id": 1
+          }]
+        }
+    },
+    {
+        "method": "UpdateSlice",
+        "input": {"id": 1, "name": "mockslice1_newname"},
+        "output": {
+          "items": [{
+            "id": 1,
+            "name": "mockslice1_newname",
+            "site_id": 1
+          }]
+        }
+    },
+    {
+        "method": "CreateSlice",
+        "input": {"name": "mockslice3", "site_id": 1},
+        "output": {
+            "id": 3,
+            "name": "mockslice3",
+            "site_id": 1
+        }
     }
+
 ]
