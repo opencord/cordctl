@@ -18,9 +18,6 @@ package commands
 
 import (
 	"bytes"
-	"fmt"
-	"github.com/opencord/cordctl/testutils"
-	"os"
 	"testing"
 )
 
@@ -88,13 +85,4 @@ func TestVersionClientAndServer(t *testing.T) {
 		t.Logf("EXPECTED:\n%s\n", expected)
 		t.Errorf("%s: expected and received did not match", t.Name())
 	}
-}
-
-func TestMain(m *testing.M) {
-	err := testutils.StartMockServer("data.json")
-	if err != nil {
-		fmt.Printf("Error when initializing mock server %v", err)
-		os.Exit(-1)
-	}
-	os.Exit(m.Run())
 }

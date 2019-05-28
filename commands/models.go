@@ -17,10 +17,12 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/jhump/protoreflect/dynamic"
 	"strings"
+	"time"
 )
 
 const (
@@ -45,12 +47,13 @@ type ModelList struct {
 
 type ModelUpdate struct {
 	OutputOptions
-	Unbuffered bool   `short:"u" long:"unbuffered" description:"Do not buffer console output and suppress default output processor"`
-	Filter     string `short:"f" long:"filter" description:"Comma-separated list of filters"`
-	SetFields  string `long:"set-field" description:"Comma-separated list of field=value to set"`
-	SetJSON    string `long:"set-json" description:"JSON dictionary to use for settings fields"`
-	Sync       bool   `long:"sync" description:"Synchronize before returning"`
-	Args       struct {
+	Unbuffered  bool          `short:"u" long:"unbuffered" description:"Do not buffer console output and suppress default output processor"`
+	Filter      string        `short:"f" long:"filter" description:"Comma-separated list of filters"`
+	SetFields   string        `long:"set-field" description:"Comma-separated list of field=value to set"`
+	SetJSON     string        `long:"set-json" description:"JSON dictionary to use for settings fields"`
+	Sync        bool          `long:"sync" description:"Synchronize before returning"`
+	SyncTimeout time.Duration `long:"synctimeout" default:"600s" description:"Timeout for --sync option"`
+	Args        struct {
 		ModelName ModelNameString
 	} `positional-args:"yes" required:"yes"`
 	IDArgs struct {
@@ -72,20 +75,22 @@ type ModelDelete struct {
 
 type ModelCreate struct {
 	OutputOptions
-	Unbuffered bool   `short:"u" long:"unbuffered" description:"Do not buffer console output"`
-	SetFields  string `long:"set-field" description:"Comma-separated list of field=value to set"`
-	SetJSON    string `long:"set-json" description:"JSON dictionary to use for settings fields"`
-	Sync       bool   `long:"sync" description:"Synchronize before returning"`
-	Args       struct {
+	Unbuffered  bool          `short:"u" long:"unbuffered" description:"Do not buffer console output"`
+	SetFields   string        `long:"set-field" description:"Comma-separated list of field=value to set"`
+	SetJSON     string        `long:"set-json" description:"JSON dictionary to use for settings fields"`
+	Sync        bool          `long:"sync" description:"Synchronize before returning"`
+	SyncTimeout time.Duration `long:"synctimeout" default:"600s" description:"Timeout for --sync option"`
+	Args        struct {
 		ModelName ModelNameString
 	} `positional-args:"yes" required:"yes"`
 }
 
 type ModelSync struct {
 	OutputOptions
-	Unbuffered bool   `short:"u" long:"unbuffered" description:"Do not buffer console output and suppress default output processor"`
-	Filter     string `short:"f" long:"filter" description:"Comma-separated list of filters"`
-	Args       struct {
+	Unbuffered  bool          `short:"u" long:"unbuffered" description:"Do not buffer console output and suppress default output processor"`
+	Filter      string        `short:"f" long:"filter" description:"Comma-separated list of filters"`
+	SyncTimeout time.Duration `long:"synctimeout" default:"600s" description:"Timeout for synchronization"`
+	Args        struct {
 		ModelName ModelNameString
 	} `positional-args:"yes" required:"yes"`
 	IDArgs struct {
@@ -165,7 +170,7 @@ func (options *ModelList) Execute(args []string) error {
 		return err
 	}
 
-	models, err := ListOrFilterModels(conn, descriptor, string(options.Args.ModelName), queries)
+	models, err := ListOrFilterModels(context.Background(), conn, descriptor, string(options.Args.ModelName), queries)
 	if err != nil {
 		return err
 	}
@@ -255,13 +260,13 @@ func (options *ModelUpdate) Execute(args []string) error {
 	if len(options.IDArgs.ID) > 0 {
 		models = make([]*dynamic.Message, len(options.IDArgs.ID))
 		for i, id := range options.IDArgs.ID {
-			models[i], err = GetModel(conn, descriptor, modelName, id)
+			models[i], err = GetModel(context.Background(), conn, descriptor, modelName, id)
 			if err != nil {
 				return err
 			}
 		}
 	} else {
-		models, err = ListOrFilterModels(conn, descriptor, modelName, queries)
+		models, err = ListOrFilterModels(context.Background(), conn, descriptor, modelName, queries)
 		if err != nil {
 			return err
 		}
@@ -300,11 +305,13 @@ func (options *ModelUpdate) Execute(args []string) error {
 	}
 
 	if options.Sync {
+		ctx, cancel := context.WithTimeout(context.Background(), options.SyncTimeout)
+		defer cancel()
 		for i, model := range models {
 			id := model.GetFieldByName("id").(int32)
 			if modelStatusOutput.Rows[i].Message == "Updated" {
 				conditional_printf(!options.Quiet, "Wait for sync: %d ", id)
-				conn, _, err = GetModelWithRetry(conn, descriptor, modelName, id, GM_UNTIL_ENACTED|Ternary_uint32(options.Quiet, GM_QUIET, 0))
+				conn, _, err = GetModelWithRetry(ctx, conn, descriptor, modelName, id, GM_UNTIL_ENACTED|Ternary_uint32(options.Quiet, GM_QUIET, 0))
 				conditional_printf(!options.Quiet, "\n")
 				UpdateModelStatusOutput(&modelStatusOutput, i, id, "Enacted", err, true)
 			}
@@ -348,7 +355,7 @@ func (options *ModelDelete) Execute(args []string) error {
 	if len(options.IDArgs.ID) > 0 {
 		ids = options.IDArgs.ID
 	} else {
-		models, err := ListOrFilterModels(conn, descriptor, modelName, queries)
+		models, err := ListOrFilterModels(context.Background(), conn, descriptor, modelName, queries)
 		if err != nil {
 			return err
 		}
@@ -419,10 +426,12 @@ func (options *ModelCreate) Execute(args []string) error {
 	UpdateModelStatusOutput(&modelStatusOutput, 0, fields["id"], "Created", err, !options.Sync)
 
 	if options.Sync {
+		ctx, cancel := context.WithTimeout(context.Background(), options.SyncTimeout)
+		defer cancel()
 		if modelStatusOutput.Rows[0].Message == "Created" {
 			id := fields["id"].(int32)
 			conditional_printf(!options.Quiet, "Wait for sync: %d ", id)
-			conn, _, err = GetModelWithRetry(conn, descriptor, modelName, id, GM_UNTIL_ENACTED|Ternary_uint32(options.Quiet, GM_QUIET, 0))
+			conn, _, err = GetModelWithRetry(ctx, conn, descriptor, modelName, id, GM_UNTIL_ENACTED|Ternary_uint32(options.Quiet, GM_QUIET, 0))
 			conditional_printf(!options.Quiet, "\n")
 			UpdateModelStatusOutput(&modelStatusOutput, 0, id, "Enacted", err, true)
 		}
@@ -465,7 +474,7 @@ func (options *ModelSync) Execute(args []string) error {
 	if len(options.IDArgs.ID) > 0 {
 		ids = options.IDArgs.ID
 	} else {
-		models, err := ListOrFilterModels(conn, descriptor, modelName, queries)
+		models, err := ListOrFilterModels(context.Background(), conn, descriptor, modelName, queries)
 		if err != nil {
 			return err
 		}
@@ -482,10 +491,13 @@ func (options *ModelSync) Execute(args []string) error {
 		}
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), options.SyncTimeout)
+	defer cancel()
+
 	modelStatusOutput := InitModelStatusOutput(options.Unbuffered, len(ids))
 	for i, id := range ids {
 		conditional_printf(!options.Quiet, "Wait for sync: %d ", id)
-		conn, _, err = GetModelWithRetry(conn, descriptor, modelName, id, GM_UNTIL_ENACTED|Ternary_uint32(options.Quiet, GM_QUIET, 0))
+		conn, _, err = GetModelWithRetry(ctx, conn, descriptor, modelName, id, GM_UNTIL_ENACTED|Ternary_uint32(options.Quiet, GM_QUIET, 0))
 		conditional_printf(!options.Quiet, "\n")
 		UpdateModelStatusOutput(&modelStatusOutput, i, id, "Enacted", err, true)
 	}

@@ -307,8 +307,8 @@ func UpdateModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, mod
 }
 
 // Get a model from XOS given its ID
-func GetModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, id int32) (*dynamic.Message, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+func GetModel(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, id int32) (*dynamic.Message, error) {
+	ctx, cancel := context.WithTimeout(ctx, GlobalConfig.Grpc.Timeout)
 	defer cancel()
 
 	headers := GenerateHeaders()
@@ -334,7 +334,7 @@ func GetModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelN
 }
 
 // Get a model, but retry under a variety of circumstances
-func GetModelWithRetry(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, id int32, flags uint32) (*grpc.ClientConn, *dynamic.Message, error) {
+func GetModelWithRetry(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, id int32, flags uint32) (*grpc.ClientConn, *dynamic.Message, error) {
 	quiet := (flags & GM_QUIET) != 0
 	until_found := (flags & GM_UNTIL_FOUND) != 0
 	until_enacted := (flags & GM_UNTIL_ENACTED) != 0
@@ -350,14 +350,18 @@ func GetModelWithRetry(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSourc
 			}
 		}
 
-		model, err := GetModel(conn, descriptor, modelName, id)
+		model, err := GetModel(ctx, conn, descriptor, modelName, id)
 		if err != nil {
 			if strings.Contains(err.Error(), "rpc error: code = Unavailable") ||
 				strings.Contains(err.Error(), "rpc error: code = Internal desc = stream terminated by RST_STREAM") {
 				if !quiet {
 					fmt.Print(".")
 				}
-				time.Sleep(100 * time.Millisecond)
+				select {
+				case <-time.After(100 * time.Millisecond):
+				case <-ctx.Done():
+					return nil, nil, ctx.Err()
+				}
 				conn.Close()
 				conn = nil
 				continue
@@ -367,7 +371,11 @@ func GetModelWithRetry(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSourc
 				if !quiet {
 					fmt.Print("x")
 				}
-				time.Sleep(100 * time.Millisecond)
+				select {
+				case <-time.After(100 * time.Millisecond):
+				case <-ctx.Done():
+					return nil, nil, ctx.Err()
+				}
 				continue
 			}
 			return nil, nil, err
@@ -377,7 +385,11 @@ func GetModelWithRetry(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSourc
 			if !quiet {
 				fmt.Print("o")
 			}
-			time.Sleep(100 * time.Millisecond)
+			select {
+			case <-time.After(100 * time.Millisecond):
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			}
 			continue
 		}
 
@@ -385,7 +397,11 @@ func GetModelWithRetry(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSourc
 			if !quiet {
 				fmt.Print("O")
 			}
-			time.Sleep(100 * time.Millisecond)
+			select {
+			case <-time.After(100 * time.Millisecond):
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			}
 			continue
 		}
 
@@ -402,8 +418,8 @@ func ItemsToDynamicMessageList(items interface{}) []*dynamic.Message {
 }
 
 // List all objects of a given model
-func ListModels(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string) ([]*dynamic.Message, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+func ListModels(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string) ([]*dynamic.Message, error) {
+	ctx, cancel := context.WithTimeout(ctx, GlobalConfig.Grpc.Timeout)
 	defer cancel()
 
 	headers := GenerateHeaders()
@@ -435,8 +451,8 @@ func ListModels(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, mode
 //   queries is a map of <field_name> to <operator><query>
 //   For example,
 //     map[string]string{"name": "==mysite"}
-func FilterModels(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, queries map[string]string) ([]*dynamic.Message, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+func FilterModels(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, queries map[string]string) ([]*dynamic.Message, error) {
+	ctx, cancel := context.WithTimeout(ctx, GlobalConfig.Grpc.Timeout)
 	defer cancel()
 
 	headers := GenerateHeaders()
@@ -481,17 +497,17 @@ func FilterModels(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, mo
 }
 
 // Call ListModels or FilterModels as appropriate
-func ListOrFilterModels(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, queries map[string]string) ([]*dynamic.Message, error) {
+func ListOrFilterModels(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, queries map[string]string) ([]*dynamic.Message, error) {
 	if len(queries) == 0 {
-		return ListModels(conn, descriptor, modelName)
+		return ListModels(ctx, conn, descriptor, modelName)
 	} else {
-		return FilterModels(conn, descriptor, modelName, queries)
+		return FilterModels(ctx, conn, descriptor, modelName, queries)
 	}
 }
 
 // Get a model from XOS given a fieldName/fieldValue
-func FindModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, queries map[string]string) (*dynamic.Message, error) {
-	models, err := FilterModels(conn, descriptor, modelName, queries)
+func FindModel(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, queries map[string]string) (*dynamic.Message, error) {
+	models, err := FilterModels(ctx, conn, descriptor, modelName, queries)
 	if err != nil {
 		return nil, err
 	}
@@ -504,7 +520,7 @@ func FindModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, model
 }
 
 // Find a model, but retry under a variety of circumstances
-func FindModelWithRetry(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, queries map[string]string, flags uint32) (*grpc.ClientConn, *dynamic.Message, error) {
+func FindModelWithRetry(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, queries map[string]string, flags uint32) (*grpc.ClientConn, *dynamic.Message, error) {
 	quiet := (flags & GM_QUIET) != 0
 	until_found := (flags & GM_UNTIL_FOUND) != 0
 	until_enacted := (flags & GM_UNTIL_ENACTED) != 0
@@ -520,14 +536,18 @@ func FindModelWithRetry(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSour
 			}
 		}
 
-		model, err := FindModel(conn, descriptor, modelName, queries)
+		model, err := FindModel(ctx, conn, descriptor, modelName, queries)
 		if err != nil {
 			if strings.Contains(err.Error(), "rpc error: code = Unavailable") ||
 				strings.Contains(err.Error(), "rpc error: code = Internal desc = stream terminated by RST_STREAM") {
 				if !quiet {
 					fmt.Print(".")
 				}
-				time.Sleep(100 * time.Millisecond)
+				select {
+				case <-time.After(100 * time.Millisecond):
+				case <-ctx.Done():
+					return nil, nil, ctx.Err()
+				}
 				conn.Close()
 				conn = nil
 				continue
@@ -537,7 +557,11 @@ func FindModelWithRetry(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSour
 				if !quiet {
 					fmt.Print("x")
 				}
-				time.Sleep(100 * time.Millisecond)
+				select {
+				case <-time.After(100 * time.Millisecond):
+				case <-ctx.Done():
+					return nil, nil, ctx.Err()
+				}
 				continue
 			}
 			return nil, nil, err
@@ -547,7 +571,11 @@ func FindModelWithRetry(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSour
 			if !quiet {
 				fmt.Print("o")
 			}
-			time.Sleep(100 * time.Millisecond)
+			select {
+			case <-time.After(100 * time.Millisecond):
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			}
 			continue
 		}
 
@@ -555,7 +583,11 @@ func FindModelWithRetry(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSour
 			if !quiet {
 				fmt.Print("O")
 			}
-			time.Sleep(100 * time.Millisecond)
+			select {
+			case <-time.After(100 * time.Millisecond):
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+			}
 			continue
 		}
 
