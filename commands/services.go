@@ -21,7 +21,6 @@ import (
 	"github.com/fullstorydev/grpcurl"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/jhump/protoreflect/dynamic"
-	//"github.com/opencord/cordctl/format"
 )
 
 const (
@@ -49,17 +48,11 @@ func RegisterServiceCommands(parser *flags.Parser) {
 }
 
 func (options *ServiceList) Execute(args []string) error {
-
-	conn, err := NewConnection()
+	conn, descriptor, err := InitReflectionClient()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-
-	descriptor, method, err := GetReflectionMethod(conn, "xos.dynamicload.GetLoadStatus")
-	if err != nil {
-		return err
-	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
 	defer cancel()
@@ -67,7 +60,7 @@ func (options *ServiceList) Execute(args []string) error {
 	headers := GenerateHeaders()
 
 	h := &RpcEventHandler{}
-	err = grpcurl.InvokeRPC(ctx, descriptor, conn, method, headers, h, h.GetParams)
+	err = grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.dynamicload.GetLoadStatus", headers, h, h.GetParams)
 	if err != nil {
 		return err
 	}
