@@ -1,0 +1,8 @@
+Verified+1: Jenkins Jenkins <do-not-reply@opencord.org>
+Code-Review+1: David Bainbridge <dbainbri@ciena.com>
+Code-Review+2: Scott Baker <scottb@onlab.us>
+Submitted-by: Scott Baker <scottb@onlab.us>
+Submitted-at: Thu, 30 May 2019 23:37:27 +0000
+Reviewed-on: https://gerrit.opencord.org/14157
+Project: cordctl
+Branch: refs/heads/master
