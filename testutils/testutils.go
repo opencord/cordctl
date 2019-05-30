@@ -131,3 +131,11 @@ func AssertErrorEqual(t *testing.T, err error, expected string) error {
 	}
 	return nil
 }
+
+func AssertStringEqual(t *testing.T, actual string, expected string) error {
+	if actual != expected {
+		t.Errorf("Expected string '%s' but received actual string '%s'", expected, actual)
+		return errors.New("AssertStringEqual")
+	}
+	return nil
+}

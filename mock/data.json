@@ -119,6 +119,95 @@
         "method": "DeleteSlice",
         "input": {"id": 77},
         "error": { "code": 2, "message": "Slice matching query does not exist."}
+    },
+    {
+        "method": "GetLoadStatus",
+        "input": ".*",
+        "output": {"services": [
+            {"name": "onos",
+             "version": "2.1.1-dev",
+             "state": "present"},
+            {"name": "kubernetes",
+             "version": "1.2.1",
+             "state": "present"}]}
+    },
+    {
+        "method": "Download",
+        "input": ".*",
+        "streamType": "server",
+        "stream": [
+            {"output": { "chunk": "ABC"} },
+            {"output": { "chunk": "DEF"} }
+        ]
+    },
+    {
+        "method": "Upload",
+        "input": ".*",
+        "streamType": "client",
+        "stream": [
+            {"input": { "chunk": "ABC", "uri": "file:///tmp/transfer.up"} },
+            {"input": { "chunk": "DEF", "uri": "file:///tmp/transfer.up"} }
+        ],
+        "output": { "status": 0,
+                    "checksum": "sha256:e9c0f8b575cbfcb42ab3b78ecc87efa3b011d9a5d10b09fa4e96f240bf6a82f5",
+                    "chunks_received": 2,
+                    "bytes_received": 6 }
+    },
+    {
+        "method": "CreateBackupOperation",
+        "input": {"operation": "create"},
+        "output": {
+            "id": 1,
+            "uuid": "uuid1"
+        }
+    },
+    {
+        "method": "GetBackupOperation",
+        "input": {"id": 1},
+        "output": {
+            "id": 1,
+            "operation": "create",
+            "status": "created",
+            "updated": 1234.0,
+            "enacted": 1234.0,
+            "file_id": 33
+        }
+    },
+    {
+        "method": "GetBackupFile",
+        "input": {"id": 33},
+        "output": {
+            "id": 33,
+            "uri": "file:///transfer.down",
+            "checksum": "sha256:e9c0f8b575cbfcb42ab3b78ecc87efa3b011d9a5d10b09fa4e96f240bf6a82f5"
+        }
+    },
+    {
+        "method": "CreateBackupFile",
+        "input": ".*",
+        "output": {
+            "id": 34,
+            "uuid": "uuid34"
+        }
+    },
+    {
+        "method": "CreateBackupOperation",
+        "input": {"operation": "restore"},
+        "output": {
+            "id": 3,
+            "uuid": "uuid3"
+        }
+    },
+    {
+        "method": "FilterBackupOperation",
+        "input": {"elements": [{"operator": 0, "name": "uuid", "sValue": "uuid3"}]},
+        "output": {"items": [{
+            "id": 3,
+            "operation": "restore",
+            "status": "restored",
+            "updated": 1234.0,
+            "enacted": 1234.0,
+            "file_id": 34
+        }]}
     }
-
 ]
