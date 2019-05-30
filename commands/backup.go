@@ -37,7 +37,7 @@ type BackupOutput struct {
 
 type BackupCreate struct {
 	OutputOptions
-	ChunkSize int `short:"h" long:"chunksize" default:"65536" description:"Host and port"`
+	ChunkSize int `short:"h" long:"chunksize" default:"65536" description:"Chunk size for streaming transfer"`
 	Args      struct {
 		LocalFileName string
 	} `positional-args:"yes" required:"yes"`
@@ -45,9 +45,11 @@ type BackupCreate struct {
 
 type BackupRestore struct {
 	OutputOptions
-	Args struct {
+	ChunkSize int `short:"h" long:"chunksize" default:"65536" description:"Chunk size for streaming transfer"`
+	Args      struct {
 		LocalFileName string
 	} `positional-args:"yes" required:"yes"`
+	CreateURIFunc func() (string, string) // allow override of CreateURIFunc for easy unit testing
 }
 
 type BackupOpts struct {
@@ -152,6 +154,13 @@ func (options *BackupCreate) Execute(args []string) error {
 	return nil
 }
 
+// Create a file:/// URI to use for storing the file in the core
+func CreateDynamicURI() (string, string) {
+	remote_name := "cordctl-restore-" + time.Now().Format("20060102T150405Z")
+	uri := "file:///var/run/xos/backup/local/" + remote_name
+	return remote_name, uri
+}
+
 func (options *BackupRestore) Execute(args []string) error {
 	conn, descriptor, err := InitReflectionClient()
 	if err != nil {
@@ -162,12 +171,17 @@ func (options *BackupRestore) Execute(args []string) error {
 	ctx := context.Background() // TODO: Implement a sync timeout
 
 	local_name := options.Args.LocalFileName
-	remote_name := "cordctl-restore-" + time.Now().Format("20060102T150405Z")
-	uri := "file:///var/run/xos/backup/local/" + remote_name
+
+	var remote_name, uri string
+	if options.CreateURIFunc != nil {
+		remote_name, uri = options.CreateURIFunc()
+	} else {
+		remote_name, uri = CreateDynamicURI()
+	}
 
 	// STEP 1: Upload the file
 
-	h, upload_result, err := UploadFile(conn, descriptor, local_name, uri, 65536)
+	h, upload_result, err := UploadFile(conn, descriptor, local_name, uri, options.ChunkSize)
 	if err != nil {
 		return err
 	}
