@@ -119,6 +119,39 @@
         "method": "DeleteSlice",
         "input": {"id": 77},
         "error": { "code": 2, "message": "Slice matching query does not exist."}
+    },
+    {
+        "method": "GetLoadStatus",
+        "input": ".*",
+        "output": {"services": [
+            {"name": "onos",
+             "version": "2.1.1-dev",
+             "state": "present"},
+            {"name": "kubernetes",
+             "version": "1.2.1",
+             "state": "present"}]}
+    },
+    {
+        "method": "Download",
+        "input": ".*",
+        "streamType": "server",
+        "stream": [
+            {"output": { "chunk": "ABC"} },
+            {"output": { "chunk": "DEF"} }
+        ]
+    },
+    {
+        "method": "Upload",
+        "input": ".*",
+        "streamType": "client",
+        "stream": [
+            {"input": { "chunk": "ABC", "uri": "file:///tmp/transfer.up"} },
+            {"input": { "chunk": "DEF", "uri": "file:///tmp/transfer.up"} }
+        ],
+        "output": { "status": 0,
+                    "checksum": "sha256:e9c0f8b575cbfcb42ab3b78ecc87efa3b011d9a5d10b09fa4e96f240bf6a82f5",
+                    "chunks_received": 2,
+                    "bytes_received": 6 }
     }
 
 ]
