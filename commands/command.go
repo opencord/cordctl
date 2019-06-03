@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/opencord/cordctl/format"
+	"github.com/opencord/cordctl/order"
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v2"
 	"io"
@@ -95,6 +96,11 @@ type OutputOptions struct {
 	OutputAs string `short:"o" long:"outputas" default:"table" choice:"table" choice:"json" choice:"yaml" description:"Type of output to generate"`
 }
 
+type ListOutputOptions struct {
+	OutputOptions
+	OrderBy string `short:"r" long:"orderby" default:"" description:"Specify the sort order of the results"`
+}
+
 func toOutputType(in string) OutputType {
 	switch in {
 	case "table":
@@ -110,6 +116,7 @@ func toOutputType(in string) OutputType {
 
 type CommandResult struct {
 	Format   format.Format
+	OrderBy  string
 	OutputAs OutputType
 	Data     interface{}
 }
@@ -191,17 +198,28 @@ func NewConnection() (*grpc.ClientConn, error) {
 
 func GenerateOutput(result *CommandResult) {
 	if result != nil && result.Data != nil {
+		data := result.Data
+		if result.OrderBy != "" {
+			s, err := order.Parse(result.OrderBy)
+			if err != nil {
+				panic(err)
+			}
+			data, err = s.Process(data)
+			if err != nil {
+				panic(err)
+			}
+		}
 		if result.OutputAs == OUTPUT_TABLE {
 			tableFormat := format.Format(result.Format)
-			tableFormat.Execute(OutputStream, true, result.Data)
+			tableFormat.Execute(OutputStream, true, data)
 		} else if result.OutputAs == OUTPUT_JSON {
-			asJson, err := json.Marshal(&result.Data)
+			asJson, err := json.Marshal(&data)
 			if err != nil {
 				panic(err)
 			}
 			fmt.Fprintf(OutputStream, "%s", asJson)
 		} else if result.OutputAs == OUTPUT_YAML {
-			asYaml, err := yaml.Marshal(&result.Data)
+			asYaml, err := yaml.Marshal(&data)
 			if err != nil {
 				panic(err)
 			}
@@ -224,6 +242,26 @@ func FormatAndGenerateOutput(options *OutputOptions, default_format string, quie
 		Format:   format.Format(outputFormat),
 		OutputAs: toOutputType(options.OutputAs),
 		Data:     data,
+	}
+
+	GenerateOutput(&result)
+}
+
+// Applies common output options to format and generate output
+func FormatAndGenerateListOutput(options *ListOutputOptions, default_format string, quiet_format string, data interface{}) {
+	outputFormat := CharReplacer.Replace(options.Format)
+	if outputFormat == "" {
+		outputFormat = default_format
+	}
+	if options.Quiet {
+		outputFormat = quiet_format
+	}
+
+	result := CommandResult{
+		Format:   format.Format(outputFormat),
+		OutputAs: toOutputType(options.OutputAs),
+		Data:     data,
+		OrderBy:  options.OrderBy,
 	}
 
 	GenerateOutput(&result)

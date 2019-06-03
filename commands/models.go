@@ -35,7 +35,7 @@ const (
 type ModelNameString string
 
 type ModelList struct {
-	OutputOptions
+	ListOutputOptions
 	ShowHidden      bool   `long:"showhidden" description:"Show hidden fields in default output"`
 	ShowFeedback    bool   `long:"showfeedback" description:"Show feedback fields in default output"`
 	ShowBookkeeping bool   `long:"showbookkeeping" description:"Show bookkeeping fields in default output"`
@@ -220,7 +220,7 @@ func (options *ModelList) Execute(args []string) error {
 		}
 	}
 
-	FormatAndGenerateOutput(&options.OutputOptions, default_format.String(), "{{.id}}", data)
+	FormatAndGenerateListOutput(&options.ListOutputOptions, default_format.String(), "{{.id}}", data)
 
 	return nil
 }

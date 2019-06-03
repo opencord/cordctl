@@ -28,7 +28,7 @@ const (
 )
 
 type ServiceList struct {
-	OutputOptions
+	ListOutputOptions
 }
 
 type ServiceListOutput struct {
@@ -88,7 +88,7 @@ func (options *ServiceList) Execute(args []string) error {
 		data[i].State = val.GetFieldByName("state").(string)
 	}
 
-	FormatAndGenerateOutput(&options.OutputOptions, DEFAULT_SERVICE_FORMAT, "{{.Name}}", data)
+	FormatAndGenerateListOutput(&options.ListOutputOptions, DEFAULT_SERVICE_FORMAT, "{{.Name}}", data)
 
 	return nil
 }
