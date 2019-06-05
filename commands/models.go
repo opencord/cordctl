@@ -21,6 +21,7 @@ import (
 	"fmt"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/jhump/protoreflect/dynamic"
+	"sort"
 	"strings"
 	"time"
 )
@@ -175,7 +176,7 @@ func (options *ModelList) Execute(args []string) error {
 		return err
 	}
 
-	field_names := make(map[string]bool)
+	var field_names []string
 	data := make([]map[string]interface{}, len(models))
 	for i, val := range models {
 		data[i] = make(map[string]interface{})
@@ -204,17 +205,30 @@ func (options *ModelList) Execute(args []string) error {
 
 			data[i][field_name] = val.GetFieldByName(field_name)
 
-			field_names[field_name] = true
+			// Every row has the same set of known field names, so it suffices to use the names
+			// from the first row.
+			if i == 0 {
+				field_names = append(field_names, field_name)
+			}
 		}
 	}
 
+	// Sort field names, making sure "id" appears first
+	sort.SliceStable(field_names, func(i, j int) bool {
+		if field_names[i] == "id" {
+			return true
+		} else if field_names[j] == "id" {
+			return false
+		} else {
+			return (field_names[i] < field_names[j])
+		}
+	})
+
 	var default_format strings.Builder
 	default_format.WriteString("table")
-	first := true
-	for field_name, _ := range field_names {
-		if first {
+	for i, field_name := range field_names {
+		if i == 0 {
 			fmt.Fprintf(&default_format, "{{ .%s }}", field_name)
-			first = false
 		} else {
 			fmt.Fprintf(&default_format, "\t{{ .%s }}", field_name)
 		}
