@@ -12,6 +12,16 @@
         }
     },
     {
+        "method": "GetDatabaseInfo",
+        "input": ".*",
+        "output": {
+          "name": "xos",
+          "connection": "xos-db:5432",
+          "version": "10.3",
+          "status": 1
+        }
+    },
+    {
         "method": "GetSlice",
         "input": {"id": 1},
         "output": {

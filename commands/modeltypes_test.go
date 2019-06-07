@@ -24,7 +24,8 @@ import (
 
 func TestModelTypeList(t *testing.T) {
 	// use `python -m json.tool` to pretty-print json
-	expected := `AddressPool
+	expected := `ANIPort
+AddressPool
 AttWorkflowDriverService
 AttWorkflowDriverServiceInstance
 AttWorkflowDriverWhiteListEntry
@@ -61,7 +62,6 @@ OLTDevice
 ONOSApp
 ONOSService
 ONUDevice
-PONONUPort
 PONPort
 Port
 PortBase
@@ -86,6 +86,7 @@ Slice
 Switch
 SwitchPort
 Tag
+TechnologyProfile
 TrustDomain
 UNIPort
 User
