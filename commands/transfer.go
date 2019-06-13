@@ -84,6 +84,9 @@ func (options *TransferUpload) Execute(args []string) error {
 	}
 
 	h, upload_result, err := UploadFile(conn, descriptor, local_name, uri, options.ChunkSize)
+	if err != nil {
+		return err
+	}
 
 	if upload_result.GetFieldByName("checksum").(string) != h.GetChecksum() {
 		return fmt.Errorf("Checksum mismatch, expected=%s, received=%s",
