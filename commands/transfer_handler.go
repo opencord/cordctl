@@ -126,6 +126,10 @@ func UploadFile(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, loca
 		return nil, nil, err
 	}
 
+	if h.Status.Err() != nil {
+		return nil, nil, h.Status.Err()
+	}
+
 	return h, d, err
 }
 
@@ -154,6 +158,10 @@ func DownloadFile(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, ur
 	err = grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.filetransfer/Download", headers, h, h.GetParams)
 	if err != nil {
 		return nil, err
+	}
+
+	if h.Status.Err() != nil {
+		return nil, h.Status.Err()
 	}
 
 	return h, err
