@@ -19,8 +19,10 @@ package commands
 import (
 	"context"
 	"fmt"
+	"github.com/fullstorydev/grpcurl"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/jhump/protoreflect/dynamic"
+	"google.golang.org/grpc"
 	"sort"
 	"strings"
 	"time"
@@ -99,12 +101,26 @@ type ModelSync struct {
 	} `positional-args:"yes" required:"no"`
 }
 
+type ModelSetDirty struct {
+	OutputOptions
+	Unbuffered bool   `short:"u" long:"unbuffered" description:"Do not buffer console output and suppress default output processor"`
+	Filter     string `short:"f" long:"filter" description:"Comma-separated list of filters"`
+	All        bool   `short:"a" long:"all" description:"Operate on all models"`
+	Args       struct {
+		ModelName ModelNameString
+	} `positional-args:"yes" required:"yes"`
+	IDArgs struct {
+		ID []int32
+	} `positional-args:"yes" required:"no"`
+}
+
 type ModelOpts struct {
-	List   ModelList   `command:"list"`
-	Update ModelUpdate `command:"update"`
-	Delete ModelDelete `command:"delete"`
-	Create ModelCreate `command:"create"`
-	Sync   ModelSync   `command:"sync"`
+	List     ModelList     `command:"list"`
+	Update   ModelUpdate   `command:"update"`
+	Delete   ModelDelete   `command:"delete"`
+	Create   ModelCreate   `command:"create"`
+	Sync     ModelSync     `command:"sync"`
+	SetDirty ModelSetDirty `command:"setdirty"`
 }
 
 type ModelStatusOutputRow struct {
@@ -473,7 +489,7 @@ func (options *ModelSync) Execute(args []string) error {
 
 	if (len(options.IDArgs.ID) == 0 && len(options.Filter) == 0) ||
 		(len(options.IDArgs.ID) != 0 && len(options.Filter) != 0) {
-		return fmt.Errorf("Use either an ID or a --filter to specify which models to sync")
+		return fmt.Errorf("Use either an ID or a --filter to specify which models to operate on")
 	}
 
 	queries, err := CommaSeparatedQueryToMap(options.Filter, true)
@@ -514,6 +530,85 @@ func (options *ModelSync) Execute(args []string) error {
 		conn, _, err = GetModelWithRetry(ctx, conn, descriptor, modelName, id, GM_UNTIL_ENACTED|Ternary_uint32(options.Quiet, GM_QUIET, 0))
 		conditional_printf(!options.Quiet, "\n")
 		UpdateModelStatusOutput(&modelStatusOutput, i, id, "Enacted", err, true)
+	}
+
+	if !options.Unbuffered {
+		FormatAndGenerateOutput(&options.OutputOptions, DEFAULT_SYNC_FORMAT, DEFAULT_SYNC_FORMAT, modelStatusOutput.Rows)
+	}
+
+	return nil
+}
+
+// Common processing for commands that take a modelname and a list of ids or a filter
+func GetIDList(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, ids []int32, filter string, all bool) ([]int32, error) {
+	err := CheckModelName(descriptor, modelName)
+	if err != nil {
+		return nil, err
+	}
+
+	// we require exactly one of ID, --filter, or --all
+	exclusiveCount := 0
+	if len(ids) > 0 {
+		exclusiveCount++
+	}
+	if filter != "" {
+		exclusiveCount++
+	}
+	if all {
+		exclusiveCount++
+	}
+
+	if (exclusiveCount == 0) || (exclusiveCount > 1) {
+		return nil, fmt.Errorf("Use either an ID, --filter, or --all to specify which models to operate on")
+	}
+
+	queries, err := CommaSeparatedQueryToMap(filter, true)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ids) > 0 {
+		// do nothing
+	} else {
+		models, err := ListOrFilterModels(context.Background(), conn, descriptor, modelName, queries)
+		if err != nil {
+			return nil, err
+		}
+		ids = make([]int32, len(models))
+		for i, model := range models {
+			ids[i] = model.GetFieldByName("id").(int32)
+		}
+		if len(ids) == 0 {
+			return nil, fmt.Errorf("Filter matches no objects")
+		} else if len(ids) > 1 {
+			if !Confirmf("Filter matches %d objects. Continue [y/n] ? ", len(models)) {
+				return nil, fmt.Errorf("Aborted by user")
+			}
+		}
+	}
+
+	return ids, nil
+}
+
+func (options *ModelSetDirty) Execute(args []string) error {
+	conn, descriptor, err := InitReflectionClient()
+	if err != nil {
+		return err
+	}
+
+	defer conn.Close()
+
+	modelName := string(options.Args.ModelName)
+	ids, err := GetIDList(conn, descriptor, modelName, options.IDArgs.ID, options.Filter, options.All)
+	if err != nil {
+		return err
+	}
+
+	modelStatusOutput := InitModelStatusOutput(options.Unbuffered, len(ids))
+	for i, id := range ids {
+		updateMap := map[string]interface{}{"id": id}
+		err := UpdateModel(conn, descriptor, modelName, updateMap)
+		UpdateModelStatusOutput(&modelStatusOutput, i, id, "Dirtied", err, true)
 	}
 
 	if !options.Unbuffered {
