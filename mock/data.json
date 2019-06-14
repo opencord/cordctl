@@ -27,6 +27,7 @@
         "output": {
           "id": 1,
           "name": "mockslice1",
+          "description": "an up-to-date slice",
           "site_id": 1,
           "updated": 1234.0,
           "enacted": 1234.0
@@ -38,6 +39,7 @@
         "output": {
           "id": 2,
           "name": "mockslice2",
+          "description": "a dirty slice",
           "site_id": 1,
           "updated": 1234.0,
           "enacted": 900.0
@@ -70,7 +72,8 @@
     },
     {
         "method": "FilterSlice",
-        "input": {"elements": [{"operator": 0, "name": "id", "iValue": 1}]},
+        "input": {"kind": 0,
+                  "elements": [{"operator": 0, "name": "id", "iValue": 1}]},
         "output": {
           "items": [{
             "id": 1,
@@ -81,7 +84,8 @@
     },
     {
         "method": "FilterSlice",
-        "input": {"elements": [{"operator": 0, "name": "name", "sValue": "mockslice2"}]},
+        "input": {"kind": 0,
+                  "elements": [{"operator": 0, "name": "name", "sValue": "mockslice2"}]},
         "output": {
           "items": [{
             "id": 2,
@@ -92,10 +96,22 @@
     },
     {
         "method": "FilterSlice",
-        "input": {"elements": [{"operator": 0, "name": "id", "iValue": 77}]},
+        "input": {"kind": 0,
+                  "elements": [{"operator": 0, "name": "id", "iValue": 77}]},
         "output": {
           "items": []
         }
+    },
+    {
+        "method": "FilterSlice",
+        "input": {"kind": 2},
+        "output": {
+            "items": [{
+              "id": 2,
+              "name": "mockslice2",
+              "site_id": 1
+            }]
+          }
     },
     {
         "method": "UpdateSlice",
@@ -103,6 +119,15 @@
         "output": {
             "id": 1,
             "name": "mockslice1_newname",
+            "site_id": 1
+        }
+    },
+    {
+        "method": "UpdateSlice",
+        "input": { "id": 1 },
+        "output": {
+            "id": 1,
+            "name": "mockslice1",
             "site_id": 1
         }
     },

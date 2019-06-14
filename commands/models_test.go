@@ -172,6 +172,49 @@ func TestModelListFilterName(t *testing.T) {
 	testutils.AssertJSONEqual(t, got.String(), expected)
 }
 
+func TestModelListDirty(t *testing.T) {
+	// use `python -m json.tool` to pretty-print json
+	expected := `[
+		{
+			"controller_kind": "",
+			"controller_replica_count": 0,
+			"creator_id": 0,
+			"default_flavor_id": 0,
+			"default_image_id": 0,
+			"default_isolation": "",
+			"default_node_id": 0,
+			"description": "",
+			"enabled": false,
+			"exposed_ports": "",
+			"id": 2,
+			"max_instances": 0,
+			"mount_data_sets": "",
+			"name": "mockslice2",
+			"network": "",
+			"principal_id": 0,
+			"service_id": 0,
+			"site_id": 1,
+			"trust_domain_id": 0
+		}
+	]`
+
+	got := new(bytes.Buffer)
+	OutputStream = got
+
+	var options ModelOpts
+	options.List.Args.ModelName = "Slice"
+	options.List.OutputAs = "json"
+	options.List.State = "dirty"
+	err := options.List.Execute([]string{})
+
+	if err != nil {
+		t.Errorf("%s: Received error %v", t.Name(), err)
+		return
+	}
+
+	testutils.AssertJSONEqual(t, got.String(), expected)
+}
+
 func TestModelUpdate(t *testing.T) {
 	expected := `[{"id":1, "message":"Updated"}]`
 
@@ -366,6 +409,26 @@ func TestModelSyncTimeout(t *testing.T) {
 	options.Sync.IDArgs.ID = []int32{2}
 	options.Sync.SyncTimeout = 5 * time.Second
 	err := options.Sync.Execute([]string{})
+
+	if err != nil {
+		t.Errorf("%s: Received error %v", t.Name(), err)
+		return
+	}
+
+	testutils.AssertJSONEqual(t, got.String(), expected)
+}
+
+func TestModelSetDirty(t *testing.T) {
+	expected := `[{"id":1, "message":"Dirtied"}]`
+
+	got := new(bytes.Buffer)
+	OutputStream = got
+
+	var options ModelOpts
+	options.SetDirty.Args.ModelName = "Slice"
+	options.SetDirty.OutputAs = "json"
+	options.SetDirty.IDArgs.ID = []int32{1}
+	err := options.SetDirty.Execute([]string{})
 
 	if err != nil {
 		t.Errorf("%s: Received error %v", t.Name(), err)
