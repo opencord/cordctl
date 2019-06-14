@@ -74,6 +74,7 @@ cordctl completion bash >> $HOME/.bashrc
 * `cordctl model delete <modelName> <id>` ... delete models.
 * `cordctl model create <modelName> --set-json <json>` ... create a new model.
 * `cordctl model sync <modelName> <id>` ... wait for a model to be synchronized.
+* `cordctl model setdirty <modelName> <id>` ... set a model dirty so it will be synchronized.
 
 ### Listing model types
 
@@ -94,6 +95,13 @@ cordctl model list Slice --filter "id>10, controller_kind=Deployment"
 ```
 
 Supported operators in the filters include `=`, `!=`, `>`, `<`, `>=`, `<=`.
+
+The core also permits models to be filtered based on state, and the `--state` argument can be used to filter based on a state. States include `all`, `dirty`, `deleted`, `dirtypol`, and `deletedpol`. `default` is a synonym for `all`. For example,
+
+```bash
+# List deleted ONOSApps
+cordctl model list ONOSApp --state deleted
+```
 
 ### Updating models
 
@@ -164,6 +172,31 @@ The second way to sync an object is to use the `--sync` command when doing a `mo
 cordctl model create ONOSApp --sync --set-field name=myapp,app_id=org.opencord.myapp
 ```
 
+### Dirtying Models
+
+XOS determines when a model is dirty by comparing timestamps. Each model has an `updated` timestamp that indicates the last time the model was
+updated. If this timestamp is newer than the `enacted` or `policed` timestamps then sync steps or policies will be run respectively. There is
+no direct way to modify the `updated` timestamp via the API since timestamps are managed by the `XOS` core. `cordctl` provides the `setdirty` command to cause models to be dirtied without altering the other fields of the model. When `setdirty` is used, the `updated` timestamp will be set to the current time. The `setdirty` command may be used with either an ID or a filter.
+
+```bash
+# Set model dirty based on ID
+cordctl model setdirty ONOSApp 17
+
+# Set model dirty based on a field filter
+cordctl model setdirty ONOSApp --filter name=olt
+```
+
+If you wish to query which models are dirty (for example, to verify that a previous `setdirty` worked as expected) then the `--state dirty` argument may be applied to the `model list` command. For example,
+
+```bash
+# Get a list of dirty ONOS Apps
+cordctl model list ONOSApp --state dirty
+```
+
+> Note: Not all models have syncsteps or policies implemented for them. Some models may implicitly cause related models to become
+> dirty. For example, dirtying the head of a service instance chain may cause the whole chain to be dirtied. This behavior is dependent on
+> the model. For models that do not implement syncsteps or policies and do not have the side-effect of dirtying related models, the `setdirty`
+> command has no practical value, and the models may remain in perpetual dirty state.
 
 ## Development Environment
 
