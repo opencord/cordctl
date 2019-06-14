@@ -161,7 +161,7 @@ func TestFilterModels(t *testing.T) {
 
 	qm := map[string]string{"id": "=1"}
 
-	m, err := FilterModels(context.Background(), conn, descriptor, "Slice", qm)
+	m, err := FilterModels(context.Background(), conn, descriptor, "Slice", FILTER_DEFAULT, qm)
 	assert.Equal(t, err, nil)
 
 	assert.Equal(t, len(m), 1)

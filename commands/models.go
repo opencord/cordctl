@@ -19,8 +19,10 @@ package commands
 import (
 	"context"
 	"fmt"
+	"github.com/fullstorydev/grpcurl"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/jhump/protoreflect/dynamic"
+	"google.golang.org/grpc"
 	"sort"
 	"strings"
 	"time"
@@ -41,6 +43,7 @@ type ModelList struct {
 	ShowFeedback    bool   `long:"showfeedback" description:"Show feedback fields in default output"`
 	ShowBookkeeping bool   `long:"showbookkeeping" description:"Show bookkeeping fields in default output"`
 	Filter          string `short:"f" long:"filter" description:"Comma-separated list of filters"`
+	State           string `short:"s" long:"state" description:"Filter model state [DEFAULT | ALL | DIRTY | DELETED | DIRTYPOL | DELETEDPOL]"`
 	Args            struct {
 		ModelName ModelNameString
 	} `positional-args:"yes" required:"yes"`
@@ -66,6 +69,7 @@ type ModelDelete struct {
 	OutputOptions
 	Unbuffered bool   `short:"u" long:"unbuffered" description:"Do not buffer console output and suppress default output processor"`
 	Filter     string `short:"f" long:"filter" description:"Comma-separated list of filters"`
+	All        bool   `short:"a" long:"all" description:"Operate on all models"`
 	Args       struct {
 		ModelName ModelNameString
 	} `positional-args:"yes" required:"yes"`
@@ -91,6 +95,7 @@ type ModelSync struct {
 	Unbuffered  bool          `short:"u" long:"unbuffered" description:"Do not buffer console output and suppress default output processor"`
 	Filter      string        `short:"f" long:"filter" description:"Comma-separated list of filters"`
 	SyncTimeout time.Duration `long:"synctimeout" default:"600s" description:"Timeout for synchronization"`
+	All         bool          `short:"a" long:"all" description:"Operate on all models"`
 	Args        struct {
 		ModelName ModelNameString
 	} `positional-args:"yes" required:"yes"`
@@ -99,12 +104,26 @@ type ModelSync struct {
 	} `positional-args:"yes" required:"no"`
 }
 
+type ModelSetDirty struct {
+	OutputOptions
+	Unbuffered bool   `short:"u" long:"unbuffered" description:"Do not buffer console output and suppress default output processor"`
+	Filter     string `short:"f" long:"filter" description:"Comma-separated list of filters"`
+	All        bool   `short:"a" long:"all" description:"Operate on all models"`
+	Args       struct {
+		ModelName ModelNameString
+	} `positional-args:"yes" required:"yes"`
+	IDArgs struct {
+		ID []int32
+	} `positional-args:"yes" required:"no"`
+}
+
 type ModelOpts struct {
-	List   ModelList   `command:"list"`
-	Update ModelUpdate `command:"update"`
-	Delete ModelDelete `command:"delete"`
-	Create ModelCreate `command:"create"`
-	Sync   ModelSync   `command:"sync"`
+	List     ModelList     `command:"list"`
+	Update   ModelUpdate   `command:"update"`
+	Delete   ModelDelete   `command:"delete"`
+	Create   ModelCreate   `command:"create"`
+	Sync     ModelSync     `command:"sync"`
+	SetDirty ModelSetDirty `command:"setdirty"`
 }
 
 type ModelStatusOutputRow struct {
@@ -153,6 +172,81 @@ func UpdateModelStatusOutput(output *ModelStatusOutput, i int, id interface{}, s
 	}
 }
 
+// Convert a user-supplied state filter argument to the appropriate enum name
+func GetFilterKind(kindArg string) (string, error) {
+	kindMap := map[string]string{
+		"default":   FILTER_DEFAULT,
+		"all":       FILTER_ALL,
+		"dirty":     FILTER_DIRTY,
+		"deleted":   FILTER_DELETED,
+		"dirtypol":  FILTER_DIRTYPOL,
+		"deletedpo": FILTER_DELETEDPOL,
+	}
+
+	// If no arg then use default
+	if kindArg == "" {
+		return kindMap["default"], nil
+	}
+
+	val, ok := kindMap[strings.ToLower(kindArg)]
+	if !ok {
+		return "", fmt.Errorf("Failed to understand model state %s", kindArg)
+	}
+
+	return val, nil
+}
+
+// Common processing for commands that take a modelname and a list of ids or a filter
+func GetIDList(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, ids []int32, filter string, all bool) ([]int32, error) {
+	err := CheckModelName(descriptor, modelName)
+	if err != nil {
+		return nil, err
+	}
+
+	// we require exactly one of ID, --filter, or --all
+	exclusiveCount := 0
+	if len(ids) > 0 {
+		exclusiveCount++
+	}
+	if filter != "" {
+		exclusiveCount++
+	}
+	if all {
+		exclusiveCount++
+	}
+
+	if (exclusiveCount == 0) || (exclusiveCount > 1) {
+		return nil, fmt.Errorf("Use either an ID, --filter, or --all to specify which models to operate on")
+	}
+
+	queries, err := CommaSeparatedQueryToMap(filter, true)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ids) > 0 {
+		// do nothing
+	} else {
+		models, err := ListOrFilterModels(context.Background(), conn, descriptor, modelName, FILTER_DEFAULT, queries)
+		if err != nil {
+			return nil, err
+		}
+		ids = make([]int32, len(models))
+		for i, model := range models {
+			ids[i] = model.GetFieldByName("id").(int32)
+		}
+		if len(ids) == 0 {
+			return nil, fmt.Errorf("Filter matches no objects")
+		} else if len(ids) > 1 {
+			if !Confirmf("Filter matches %d objects. Continue [y/n] ? ", len(models)) {
+				return nil, fmt.Errorf("Aborted by user")
+			}
+		}
+	}
+
+	return ids, nil
+}
+
 func (options *ModelList) Execute(args []string) error {
 	conn, descriptor, err := InitReflectionClient()
 	if err != nil {
@@ -166,12 +260,17 @@ func (options *ModelList) Execute(args []string) error {
 		return err
 	}
 
+	filterKind, err := GetFilterKind(options.State)
+	if err != nil {
+		return err
+	}
+
 	queries, err := CommaSeparatedQueryToMap(options.Filter, true)
 	if err != nil {
 		return err
 	}
 
-	models, err := ListOrFilterModels(context.Background(), conn, descriptor, string(options.Args.ModelName), queries)
+	models, err := ListOrFilterModels(context.Background(), conn, descriptor, string(options.Args.ModelName), filterKind, queries)
 	if err != nil {
 		return err
 	}
@@ -280,7 +379,7 @@ func (options *ModelUpdate) Execute(args []string) error {
 			}
 		}
 	} else {
-		models, err = ListOrFilterModels(context.Background(), conn, descriptor, modelName, queries)
+		models, err = ListOrFilterModels(context.Background(), conn, descriptor, modelName, FILTER_DEFAULT, queries)
 		if err != nil {
 			return err
 		}
@@ -347,43 +446,10 @@ func (options *ModelDelete) Execute(args []string) error {
 
 	defer conn.Close()
 
-	err = CheckModelName(descriptor, string(options.Args.ModelName))
-	if err != nil {
-		return err
-	}
-
-	if (len(options.IDArgs.ID) == 0 && len(options.Filter) == 0) ||
-		(len(options.IDArgs.ID) != 0 && len(options.Filter) != 0) {
-		return fmt.Errorf("Use either an ID or a --filter to specify which models to delete")
-	}
-
-	queries, err := CommaSeparatedQueryToMap(options.Filter, true)
-	if err != nil {
-		return err
-	}
-
 	modelName := string(options.Args.ModelName)
-
-	var ids []int32
-
-	if len(options.IDArgs.ID) > 0 {
-		ids = options.IDArgs.ID
-	} else {
-		models, err := ListOrFilterModels(context.Background(), conn, descriptor, modelName, queries)
-		if err != nil {
-			return err
-		}
-		ids = make([]int32, len(models))
-		for i, model := range models {
-			ids[i] = model.GetFieldByName("id").(int32)
-		}
-		if len(ids) == 0 {
-			return fmt.Errorf("Filter matches no objects")
-		} else if len(ids) > 1 {
-			if !Confirmf("Filter matches %d objects. Continue [y/n] ? ", len(models)) {
-				return fmt.Errorf("Aborted by user")
-			}
-		}
+	ids, err := GetIDList(conn, descriptor, modelName, options.IDArgs.ID, options.Filter, options.All)
+	if err != nil {
+		return err
 	}
 
 	modelStatusOutput := InitModelStatusOutput(options.Unbuffered, len(ids))
@@ -466,43 +532,10 @@ func (options *ModelSync) Execute(args []string) error {
 
 	defer conn.Close()
 
-	err = CheckModelName(descriptor, string(options.Args.ModelName))
-	if err != nil {
-		return err
-	}
-
-	if (len(options.IDArgs.ID) == 0 && len(options.Filter) == 0) ||
-		(len(options.IDArgs.ID) != 0 && len(options.Filter) != 0) {
-		return fmt.Errorf("Use either an ID or a --filter to specify which models to sync")
-	}
-
-	queries, err := CommaSeparatedQueryToMap(options.Filter, true)
-	if err != nil {
-		return err
-	}
-
 	modelName := string(options.Args.ModelName)
-
-	var ids []int32
-
-	if len(options.IDArgs.ID) > 0 {
-		ids = options.IDArgs.ID
-	} else {
-		models, err := ListOrFilterModels(context.Background(), conn, descriptor, modelName, queries)
-		if err != nil {
-			return err
-		}
-		ids = make([]int32, len(models))
-		for i, model := range models {
-			ids[i] = model.GetFieldByName("id").(int32)
-		}
-		if len(ids) == 0 {
-			return fmt.Errorf("Filter matches no objects")
-		} else if len(ids) > 1 {
-			if !Confirmf("Filter matches %d objects. Continue [y/n] ? ", len(models)) {
-				return fmt.Errorf("Aborted by user")
-			}
-		}
+	ids, err := GetIDList(conn, descriptor, modelName, options.IDArgs.ID, options.Filter, options.All)
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), options.SyncTimeout)
@@ -514,6 +547,34 @@ func (options *ModelSync) Execute(args []string) error {
 		conn, _, err = GetModelWithRetry(ctx, conn, descriptor, modelName, id, GM_UNTIL_ENACTED|Ternary_uint32(options.Quiet, GM_QUIET, 0))
 		conditional_printf(!options.Quiet, "\n")
 		UpdateModelStatusOutput(&modelStatusOutput, i, id, "Enacted", err, true)
+	}
+
+	if !options.Unbuffered {
+		FormatAndGenerateOutput(&options.OutputOptions, DEFAULT_SYNC_FORMAT, DEFAULT_SYNC_FORMAT, modelStatusOutput.Rows)
+	}
+
+	return nil
+}
+
+func (options *ModelSetDirty) Execute(args []string) error {
+	conn, descriptor, err := InitReflectionClient()
+	if err != nil {
+		return err
+	}
+
+	defer conn.Close()
+
+	modelName := string(options.Args.ModelName)
+	ids, err := GetIDList(conn, descriptor, modelName, options.IDArgs.ID, options.Filter, options.All)
+	if err != nil {
+		return err
+	}
+
+	modelStatusOutput := InitModelStatusOutput(options.Unbuffered, len(ids))
+	for i, id := range ids {
+		updateMap := map[string]interface{}{"id": id}
+		err := UpdateModel(conn, descriptor, modelName, updateMap)
+		UpdateModelStatusOutput(&modelStatusOutput, i, id, "Dirtied", err, true)
 	}
 
 	if !options.Unbuffered {

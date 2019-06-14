@@ -33,10 +33,22 @@ import (
 )
 
 // Flags for calling the *WithRetry methods
-const GM_QUIET = 1
-const GM_UNTIL_FOUND = 2
-const GM_UNTIL_ENACTED = 4
-const GM_UNTIL_STATUS = 8
+const (
+	GM_QUIET         = 1
+	GM_UNTIL_FOUND   = 2
+	GM_UNTIL_ENACTED = 4
+	GM_UNTIL_STATUS  = 8
+)
+
+// Valid choices for FilterModels `Kind` argument
+const (
+	FILTER_DEFAULT    = "DEFAULT"
+	FILTER_ALL        = "ALL"
+	FILTER_DIRTY      = "SYNCHRONIZER_DIRTY_OBJECTS"
+	FILTER_DELETED    = "SYNCHRONIZER_DELETED_OBJECTS"
+	FILTER_DIRTYPOL   = "SYNCHRONIZER_DIRTY_POLICIES"
+	FILTER_DELETEDPOL = "SYNCHRONIZER_DELETED_POLICIES"
+)
 
 type QueryEventHandler struct {
 	RpcEventHandler
@@ -451,7 +463,7 @@ func ListModels(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.D
 //   queries is a map of <field_name> to <operator><query>
 //   For example,
 //     map[string]string{"name": "==mysite"}
-func FilterModels(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, queries map[string]string) ([]*dynamic.Message, error) {
+func FilterModels(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, kind string, queries map[string]string) ([]*dynamic.Message, error) {
 	ctx, cancel := context.WithTimeout(ctx, GlobalConfig.Grpc.Timeout)
 	defer cancel()
 
@@ -472,7 +484,7 @@ func FilterModels(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl
 		},
 		Elements: queries,
 		Model:    model_md,
-		Kind:     "DEFAULT",
+		Kind:     kind,
 	}
 	err = grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.xos.Filter"+modelName, headers, h, h.GetParams)
 	if err != nil {
@@ -497,17 +509,17 @@ func FilterModels(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl
 }
 
 // Call ListModels or FilterModels as appropriate
-func ListOrFilterModels(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, queries map[string]string) ([]*dynamic.Message, error) {
-	if len(queries) == 0 {
+func ListOrFilterModels(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, kind string, queries map[string]string) ([]*dynamic.Message, error) {
+	if (len(queries) == 0) && (kind == FILTER_DEFAULT) {
 		return ListModels(ctx, conn, descriptor, modelName)
 	} else {
-		return FilterModels(ctx, conn, descriptor, modelName, queries)
+		return FilterModels(ctx, conn, descriptor, modelName, kind, queries)
 	}
 }
 
 // Get a model from XOS given a fieldName/fieldValue
 func FindModel(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, queries map[string]string) (*dynamic.Message, error) {
-	models, err := FilterModels(ctx, conn, descriptor, modelName, queries)
+	models, err := FilterModels(ctx, conn, descriptor, modelName, FILTER_DEFAULT, queries)
 	if err != nil {
 		return nil, err
 	}
