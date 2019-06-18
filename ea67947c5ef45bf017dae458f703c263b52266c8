@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8690ad3c_e8f82c00",
+        "filename": "README.md",
+        "patchSetId": 8
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 1000007
+      },
+      "writtenOn": "2019-06-18T16:42:03Z",
+      "side": 1,
+      "message": "Do you think it\u0027s possible to have something like:\n\"cordctl model setdirty ONOSApp\" to dirty all the ONOSApp models?",
+      "range": {
+        "startLine": 183,
+        "startChar": 0,
+        "endLine": 183,
+        "endChar": 33
+      },
+      "revId": "ea67947c5ef45bf017dae458f703c263b52266c8",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    }
+  ]
+}
