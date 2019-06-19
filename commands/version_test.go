@@ -64,6 +64,7 @@ func TestVersionClientAndServer(t *testing.T) {
 		"Server:\n" +
 		" Version         3.2.6\n" +
 		" Python version: 2.7.16 (default, May  6 2019, 19:35:26)\n" +
+		" Django version: unknown\n" +
 		" Git commit:     b0df1bf6ed1698285eda6a6725c5da0c80aa4aee\n" +
 		" Built:          2019-05-20T17:04:14Z\n" +
 		" OS/Arch:        linux/x86_64\n" +

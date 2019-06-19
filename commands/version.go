@@ -43,6 +43,7 @@ type CoreVersionDetails struct {
 	BuildTime     string `json:"buildtime"`
 	Os            string `json:"os"`
 	Arch          string `json:"arch"`
+	DjangoVersion string `json:"djangoversion"`
 }
 
 type VersionOutput struct {
@@ -74,6 +75,7 @@ var versionInfo = VersionOutput{
 		Os:            "unknown",
 		Arch:          "unknown",
 		BuildTime:     "unknown",
+		DjangoVersion: "unknown",
 	},
 }
 
@@ -93,6 +95,7 @@ const ServerFormat = `
 Server:
  Version         {{.Server.Version}}
  Python version: {{.Server.PythonVersion}}
+ Django version: {{.Server.DjangoVersion}}
  Git commit:     {{.Server.GitCommit}}
  Built:          {{.Server.BuildTime}}
  OS/Arch:        {{.Server.Os}}/{{.Server.Arch}}
@@ -134,6 +137,12 @@ func (options *VersionOpts) Execute(args []string) error {
 		versionInfo.Server.BuildTime = d.GetFieldByName("buildTime").(string)
 		versionInfo.Server.Os = d.GetFieldByName("os").(string)
 		versionInfo.Server.Arch = d.GetFieldByName("arch").(string)
+
+		// djangoVersion was added to GetVersion() in xos-core 3.3.1-dev
+		djangoVersion, err := d.TryGetFieldByName("djangoVersion")
+		if err == nil {
+			versionInfo.Server.DjangoVersion = djangoVersion.(string)
+		}
 	}
 
 	result := CommandResult{
