@@ -66,7 +66,7 @@ func RegisterTransferCommands(parser *flags.Parser) {
 
 func (options *TransferUpload) Execute(args []string) error {
 
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func IsFileUri(s string) bool {
 }
 
 func (options *TransferDownload) Execute(args []string) error {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	if err != nil {
 		return err
 	}

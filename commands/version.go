@@ -17,11 +17,7 @@
 package commands
 
 import (
-	"context"
-
-	"github.com/fullstorydev/grpcurl"
 	flags "github.com/jessevdk/go-flags"
-	"github.com/jhump/protoreflect/dynamic"
 	"github.com/opencord/cordctl/cli/version"
 	"github.com/opencord/cordctl/format"
 )
@@ -105,28 +101,13 @@ const DefaultFormat = ClientFormat + ServerFormat
 
 func (options *VersionOpts) Execute(args []string) error {
 	if !options.ClientOnly {
-		conn, descriptor, err := InitReflectionClient()
+		conn, descriptor, err := InitClient(INIT_NO_VERSION_CHECK)
 		if err != nil {
 			return err
 		}
 		defer conn.Close()
 
-		ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
-		defer cancel()
-
-		headers := GenerateHeaders()
-
-		h := &RpcEventHandler{}
-		err = grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.utility.GetVersion", headers, h, h.GetParams)
-		if err != nil {
-			return err
-		}
-
-		if h.Status != nil && h.Status.Err() != nil {
-			return h.Status.Err()
-		}
-
-		d, err := dynamic.AsDynamicMessage(h.Response)
+		d, err := GetVersion(conn, descriptor)
 		if err != nil {
 			return err
 		}

@@ -64,7 +64,7 @@ func RegisterBackupCommands(parser *flags.Parser) {
 }
 
 func (options *BackupCreate) Execute(args []string) error {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func CreateDynamicURI() (string, string) {
 }
 
 func (options *BackupRestore) Execute(args []string) error {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	if err != nil {
 		return err
 	}

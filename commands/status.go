@@ -42,7 +42,7 @@ func RegisterStatusCommands(parser *flags.Parser) {
 }
 
 func (options *StatusListOpts) Execute(args []string) error {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	if err != nil {
 		return err
 	}

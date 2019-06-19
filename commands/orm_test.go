@@ -70,7 +70,7 @@ func TestCommaSeparatedQueryStringsToMap(t *testing.T) {
 }
 
 func TestTypeConvert(t *testing.T) {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	assert.Equal(t, err, nil)
 	defer conn.Close()
 
@@ -88,7 +88,7 @@ func TestTypeConvert(t *testing.T) {
 }
 
 func TestCheckModelName(t *testing.T) {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	assert.Equal(t, err, nil)
 	defer conn.Close()
 
@@ -100,7 +100,7 @@ func TestCheckModelName(t *testing.T) {
 }
 
 func TestCreateModel(t *testing.T) {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	assert.Equal(t, err, nil)
 	defer conn.Close()
 
@@ -115,7 +115,7 @@ func TestCreateModel(t *testing.T) {
 }
 
 func TestUpdateModel(t *testing.T) {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	assert.Equal(t, err, nil)
 	defer conn.Close()
 
@@ -128,7 +128,7 @@ func TestUpdateModel(t *testing.T) {
 }
 
 func TestGetModel(t *testing.T) {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	assert.Equal(t, err, nil)
 	defer conn.Close()
 
@@ -140,7 +140,7 @@ func TestGetModel(t *testing.T) {
 }
 
 func TestListModels(t *testing.T) {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	assert.Equal(t, err, nil)
 	defer conn.Close()
 
@@ -155,7 +155,7 @@ func TestListModels(t *testing.T) {
 }
 
 func TestFilterModels(t *testing.T) {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	assert.Equal(t, err, nil)
 	defer conn.Close()
 
@@ -170,7 +170,7 @@ func TestFilterModels(t *testing.T) {
 }
 
 func TestDeleteModel(t *testing.T) {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	assert.Equal(t, err, nil)
 	defer conn.Close()
 

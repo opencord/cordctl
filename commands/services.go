@@ -48,7 +48,7 @@ func RegisterServiceCommands(parser *flags.Parser) {
 }
 
 func (options *ServiceList) Execute(args []string) error {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	if err != nil {
 		return err
 	}

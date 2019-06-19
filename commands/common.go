@@ -20,6 +20,8 @@ import (
 	b64 "encoding/base64"
 	"fmt"
 	"github.com/fullstorydev/grpcurl"
+	versionUtils "github.com/hashicorp/go-version"
+	"github.com/jhump/protoreflect/dynamic"
 	"github.com/jhump/protoreflect/grpcreflect"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -30,6 +32,12 @@ import (
 	"strings"
 )
 
+// Flags for calling the InitReflectionClient Method
+const (
+	INIT_DEFAULT          = 0
+	INIT_NO_VERSION_CHECK = 1 // Do not check whether server is allowed version
+)
+
 func GenerateHeaders() []string {
 	username := GlobalConfig.Username
 	password := GlobalConfig.Password
@@ -38,7 +46,34 @@ func GenerateHeaders() []string {
 	return headers
 }
 
-func InitReflectionClient() (*grpc.ClientConn, grpcurl.DescriptorSource, error) {
+// Perform the GetVersion API call on the core to get the version
+func GetVersion(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource) (*dynamic.Message, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+	defer cancel()
+
+	headers := GenerateHeaders()
+
+	h := &RpcEventHandler{}
+	err := grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.utility.GetVersion", headers, h, h.GetParams)
+	if err != nil {
+		return nil, err
+	}
+
+	if h.Status != nil && h.Status.Err() != nil {
+		return nil, h.Status.Err()
+	}
+
+	d, err := dynamic.AsDynamicMessage(h.Response)
+
+	return d, err
+}
+
+// Initialize client connection
+//    flags is a set of optional flags that may influence how the connection is setup
+//        INIT_DEFAULT - default behavior (0)
+//        INIT_NO_VERSION_CHECK - do not perform core version check
+
+func InitClient(flags uint32) (*grpc.ClientConn, grpcurl.DescriptorSource, error) {
 	conn, err := NewConnection()
 	if err != nil {
 		return nil, nil, err
@@ -59,6 +94,29 @@ func InitReflectionClient() (*grpc.ClientConn, grpcurl.DescriptorSource, error) 
 		}
 	} else {
 		descriptor = grpcurl.DescriptorSourceFromServer(context.Background(), refClient)
+	}
+
+	if flags&INIT_NO_VERSION_CHECK == 0 {
+		d, err := GetVersion(conn, descriptor)
+		if err != nil {
+			return nil, nil, err
+		}
+		// Note: NewVersion doesn't like the `-dev` suffix, so strip it off.
+		serverVersion, err := versionUtils.NewVersion(strings.Split(d.GetFieldByName("version").(string), "-")[0])
+		if err != nil {
+			return nil, nil, err
+		}
+
+		constraint, err := versionUtils.NewConstraint(CORE_VERSION_CONSTRAINT)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if !constraint.Check(serverVersion) {
+			return nil, nil, fmt.Errorf("Core version %s does not match constraint '%s'",
+				serverVersion, CORE_VERSION_CONSTRAINT)
+		}
+
 	}
 
 	return conn, descriptor, nil

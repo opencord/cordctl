@@ -40,7 +40,7 @@ func RegisterModelTypeCommands(parser *flags.Parser) {
 }
 
 func (options *ModelTypeList) Execute(args []string) error {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	if err != nil {
 		return err
 	}

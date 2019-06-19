@@ -248,7 +248,7 @@ func GetIDList(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, model
 }
 
 func (options *ModelList) Execute(args []string) error {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	if err != nil {
 		return err
 	}
@@ -339,7 +339,7 @@ func (options *ModelList) Execute(args []string) error {
 }
 
 func (options *ModelUpdate) Execute(args []string) error {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	if err != nil {
 		return err
 	}
@@ -439,7 +439,7 @@ func (options *ModelUpdate) Execute(args []string) error {
 }
 
 func (options *ModelDelete) Execute(args []string) error {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	if err != nil {
 		return err
 	}
@@ -466,7 +466,7 @@ func (options *ModelDelete) Execute(args []string) error {
 }
 
 func (options *ModelCreate) Execute(args []string) error {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	if err != nil {
 		return err
 	}
@@ -525,7 +525,7 @@ func (options *ModelCreate) Execute(args []string) error {
 }
 
 func (options *ModelSync) Execute(args []string) error {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	if err != nil {
 		return err
 	}
@@ -557,7 +557,7 @@ func (options *ModelSync) Execute(args []string) error {
 }
 
 func (options *ModelSetDirty) Execute(args []string) error {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	if err != nil {
 		return err
 	}
@@ -585,7 +585,7 @@ func (options *ModelSetDirty) Execute(args []string) error {
 }
 
 func (modelName *ModelNameString) Complete(match string) []flags.Completion {
-	conn, descriptor, err := InitReflectionClient()
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	if err != nil {
 		return nil
 	}
