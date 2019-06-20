@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ab1573ec_9f1c2679",
+        "filename": "error/error.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2019-06-20T18:40:31Z",
+      "side": 1,
+      "message": "could capture this as arg[0] incase someone renames the binary, but not a big deal.",
+      "range": {
+        "startLine": 36,
+        "startChar": 11,
+        "endLine": 36,
+        "endChar": 18
+      },
+      "revId": "aafc8359ab14716ea96c0647829ed2639559ce4e",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "898d8aed_646e8f4c",
+        "filename": "error/error.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2019-06-20T18:40:31Z",
+      "side": 1,
+      "message": "always interesting when to decide to dump for a user command. is it done on unexpected situations? or only in unexpected situations when there is a --debug or --dev flag, so that user don\u0027t see the dump but a developer could. then you risk not being able to reproduce. tricky.",
+      "revId": "aafc8359ab14716ea96c0647829ed2639559ce4e",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    }
+  ]
+}
