@@ -18,13 +18,13 @@ package commands
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/fullstorydev/grpcurl"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic"
+	corderrors "github.com/opencord/cordctl/error"
 	"google.golang.org/grpc"
 	"io"
 	"strconv"
@@ -65,7 +65,7 @@ func DecodeOperator(query string) (string, string, bool, error) {
 	if strings.HasPrefix(query, "!=") {
 		return strings.TrimSpace(query[2:]), "EQUAL", true, nil
 	} else if strings.HasPrefix(query, "==") {
-		return "", "", false, errors.New("Operator == is now allowed. Suggest using = instead.")
+		return "", "", false, corderrors.NewInvalidInputError("Operator == is now allowed. Suggest using = instead.")
 	} else if strings.HasPrefix(query, "=") {
 		return strings.TrimSpace(query[1:]), "EQUAL", false, nil
 	} else if strings.HasPrefix(query, ">=") {
@@ -109,7 +109,7 @@ func (h *QueryEventHandler) GetParams(msg proto.Message) error {
 
 		field_descriptor := h.Model.FindFieldByName(field_name)
 		if field_descriptor == nil {
-			return fmt.Errorf("Field %s does not exist", field_name)
+			return corderrors.WithStackTrace(&corderrors.FieldDoesNotExistError{ModelName: h.Model.GetName(), FieldName: field_name})
 		}
 
 		field_type := field_descriptor.GetType()
@@ -123,9 +123,9 @@ func (h *QueryEventHandler) GetParams(msg proto.Message) error {
 			i, err = strconv.ParseInt(value, 10, 32)
 			nm.SetFieldByName("iValue", uint32(i))
 		case descriptor.FieldDescriptorProto_TYPE_FLOAT:
-			err = errors.New("Floating point filters are unsupported")
+			err = corderrors.NewInvalidInputError("Floating point filters are unsupported")
 		case descriptor.FieldDescriptorProto_TYPE_DOUBLE:
-			err = errors.New("Floating point filters are unsupported")
+			err = corderrors.NewInvalidInputError("Floating point filters are unsupported")
 		default:
 			nm.SetFieldByName("sValue", value)
 			err = nil
@@ -168,7 +168,7 @@ func QueryStringsToMap(query_args []string, allow_inequality bool) (map[string]s
 			}
 		}
 		if operator_pos == -1 {
-			return nil, fmt.Errorf("Illegal operator/value string %s", query_str)
+			return nil, corderrors.WithStackTrace(&corderrors.IllegalQueryError{Query: query_str})
 		}
 		queries[strings.TrimSpace(query_str[:operator_pos])] = query_str[operator_pos:]
 	}
@@ -193,11 +193,11 @@ func TypeConvert(source grpcurl.DescriptorSource, modelName string, field_name s
 	}
 	model_md, ok := model_descriptor.(*desc.MessageDescriptor)
 	if !ok {
-		return nil, fmt.Errorf("Failed to convert model %s to a messagedescriptor", modelName)
+		return nil, corderrors.WithStackTrace(&corderrors.TypeConversionError{Source: modelName, Destination: "messageDescriptor"})
 	}
 	field_descriptor := model_md.FindFieldByName(field_name)
 	if field_descriptor == nil {
-		return nil, fmt.Errorf("Field %s does not exist in model %s", field_name, modelName)
+		return nil, corderrors.WithStackTrace(&corderrors.FieldDoesNotExistError{ModelName: modelName, FieldName: field_name})
 	}
 	field_type := field_descriptor.GetType()
 
@@ -254,7 +254,7 @@ func CheckModelName(source grpcurl.DescriptorSource, name string) error {
 	}
 	_, present := models[name]
 	if !present {
-		return errors.New("Model " + name + " does not exist. Use `cordctl models available` to get a list of available models")
+		return corderrors.WithStackTrace(&corderrors.UnknownModelTypeError{Name: name})
 	}
 	return nil
 }
@@ -330,11 +330,11 @@ func GetModel(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.Des
 	}
 	err := grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.xos.Get"+modelName, headers, h, h.GetParams)
 	if err != nil {
-		return nil, err
+		return nil, corderrors.RpcErrorWithIdToCordError(err, modelName, id)
 	}
 
 	if h.Status != nil && h.Status.Err() != nil {
-		return nil, h.Status.Err()
+		return nil, corderrors.RpcErrorWithIdToCordError(h.Status.Err(), modelName, id) //h.Status.Err()
 	}
 
 	d, err := dynamic.AsDynamicMessage(h.Response)
@@ -379,7 +379,8 @@ func GetModelWithRetry(ctx context.Context, conn *grpc.ClientConn, descriptor gr
 				continue
 			}
 
-			if until_found && strings.Contains(err.Error(), "rpc error: code = NotFound") {
+			_, is_not_found_error := err.(*corderrors.ModelNotFoundError)
+			if until_found && is_not_found_error {
 				if !quiet {
 					fmt.Print("x")
 				}
@@ -475,7 +476,7 @@ func FilterModels(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl
 	}
 	model_md, ok := model_descriptor.(*desc.MessageDescriptor)
 	if !ok {
-		return nil, errors.New("Failed to convert model to a messagedescriptor")
+		return nil, corderrors.WithStackTrace(&corderrors.TypeConversionError{Source: modelName, Destination: "messageDescriptor"})
 	}
 
 	h := &QueryEventHandler{
@@ -525,7 +526,7 @@ func FindModel(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.De
 	}
 
 	if len(models) == 0 {
-		return nil, errors.New("rpc error: code = NotFound")
+		return nil, corderrors.WithStackTrace(&corderrors.ModelNotFoundError{ModelName: modelName, Queries: queries})
 	}
 
 	return models[0], nil
@@ -565,7 +566,8 @@ func FindModelWithRetry(ctx context.Context, conn *grpc.ClientConn, descriptor g
 				continue
 			}
 
-			if until_found && strings.Contains(err.Error(), "rpc error: code = NotFound") {
+			_, is_not_found_error := err.(*corderrors.ModelNotFoundError)
+			if until_found && is_not_found_error {
 				if !quiet {
 					fmt.Print("x")
 				}

@@ -2,7 +2,7 @@
  * Portions copyright 2019-present Open Networking Foundation
  * Original copyright 2019-present Ciena Corporation
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the"github.com/stretchr/testify/assert" "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
@@ -18,7 +18,9 @@ package commands
 
 import (
 	"bytes"
+	corderrors "github.com/opencord/cordctl/error"
 	"github.com/opencord/cordctl/testutils"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
@@ -267,7 +269,9 @@ func TestModelUpdateNoExist(t *testing.T) {
 	options.Update.IDArgs.ID = []int32{77}
 	options.Update.SetFields = "name=mockslice1_newname"
 	err := options.Update.Execute([]string{})
-	testutils.AssertErrorEqual(t, err, "rpc error: code = Unknown desc = Slice matching query does not exist.")
+
+	_, matched := err.(*corderrors.ModelNotFoundError)
+	assert.True(t, matched)
 }
 
 func TestModelUpdateUsingFilterNoExist(t *testing.T) {
@@ -281,7 +285,8 @@ func TestModelUpdateUsingFilterNoExist(t *testing.T) {
 	options.Update.SetFields = "name=mockslice1_newname"
 	err := options.Update.Execute([]string{})
 
-	testutils.AssertErrorEqual(t, err, "Filter matches no objects")
+	_, matched := err.(*corderrors.NoMatchError)
+	assert.True(t, matched)
 }
 
 func TestModelCreate(t *testing.T) {
@@ -373,7 +378,9 @@ func TestModelDeleteFilterNoExist(t *testing.T) {
 	options.Delete.OutputAs = "json"
 	options.Delete.Filter = "id=77"
 	err := options.Delete.Execute([]string{})
-	testutils.AssertErrorEqual(t, err, "Filter matches no objects")
+
+	_, matched := err.(*corderrors.NoMatchError)
+	assert.True(t, matched)
 }
 
 func TestModelSync(t *testing.T) {

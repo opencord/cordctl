@@ -23,6 +23,7 @@ import (
 	versionUtils "github.com/hashicorp/go-version"
 	"github.com/jhump/protoreflect/dynamic"
 	"github.com/jhump/protoreflect/grpcreflect"
+	corderrors "github.com/opencord/cordctl/error"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	reflectpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
@@ -113,8 +114,10 @@ func InitClient(flags uint32) (*grpc.ClientConn, grpcurl.DescriptorSource, error
 		}
 
 		if !constraint.Check(serverVersion) {
-			return nil, nil, fmt.Errorf("Core version %s does not match constraint '%s'",
-				serverVersion, CORE_VERSION_CONSTRAINT)
+			return nil, nil, corderrors.WithStackTrace(&corderrors.VersionConstraintError{
+				Name:       "xos-core",
+				Version:    serverVersion.String(),
+				Constraint: CORE_VERSION_CONSTRAINT})
 		}
 
 	}

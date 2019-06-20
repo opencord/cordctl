@@ -18,6 +18,7 @@ package commands
 
 import (
 	"context"
+	corderrors "github.com/opencord/cordctl/error"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -60,13 +61,35 @@ func TestDecodeOperator(t *testing.T) {
 	assert.Equal(t, err, nil)
 }
 
-func TestCommaSeparatedQueryStringsToMap(t *testing.T) {
+func TestCommaSeparatedQueryToMap(t *testing.T) {
 	m, err := CommaSeparatedQueryToMap("foo=7,bar!=stuff, x = 5, y= 27", true)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, m["foo"], "=7")
 	assert.Equal(t, m["bar"], "!=stuff")
 	assert.Equal(t, m["x"], "= 5")
 	assert.Equal(t, m["y"], "= 27")
+}
+
+func TestCommaSeparatedQueryToMapIllegal(t *testing.T) {
+	// Query string missing operator
+	_, err := CommaSeparatedQueryToMap("foo", true)
+
+	_, matched := err.(*corderrors.IllegalQueryError)
+	assert.True(t, matched)
+
+	// Query string is contains an empty element
+	_, err = CommaSeparatedQueryToMap(",foo=bar", true)
+
+	_, matched = err.(*corderrors.IllegalQueryError)
+	assert.True(t, matched)
+}
+
+func TestCommaSeparatedQueryToMapEmpty(t *testing.T) {
+	// Query string missing operator
+	m, err := CommaSeparatedQueryToMap("", true)
+
+	assert.Equal(t, err, nil)
+	assert.Equal(t, len(m), 0)
 }
 
 func TestTypeConvert(t *testing.T) {
@@ -96,7 +119,8 @@ func TestCheckModelName(t *testing.T) {
 	assert.Equal(t, err, nil)
 
 	err = CheckModelName(descriptor, "DoesNotExist")
-	assert.Equal(t, err.Error(), "Model DoesNotExist does not exist. Use `cordctl models available` to get a list of available models")
+	_, matched := err.(*corderrors.UnknownModelTypeError)
+	assert.True(t, matched)
 }
 
 func TestCreateModel(t *testing.T) {
@@ -139,6 +163,18 @@ func TestGetModel(t *testing.T) {
 	assert.Equal(t, m.GetFieldByName("name").(string), "mockslice1")
 }
 
+func TestGetModelNoExist(t *testing.T) {
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
+	assert.Equal(t, err, nil)
+	defer conn.Close()
+
+	_, err = GetModel(context.Background(), conn, descriptor, "Slice", int32(77))
+	assert.NotEqual(t, err, nil)
+
+	_, matched := err.(*corderrors.ModelNotFoundError)
+	assert.True(t, matched)
+}
+
 func TestListModels(t *testing.T) {
 	conn, descriptor, err := InitClient(INIT_DEFAULT)
 	assert.Equal(t, err, nil)
@@ -167,6 +203,34 @@ func TestFilterModels(t *testing.T) {
 	assert.Equal(t, len(m), 1)
 	assert.Equal(t, m[0].GetFieldByName("id").(int32), int32(1))
 	assert.Equal(t, m[0].GetFieldByName("name").(string), "mockslice1")
+}
+
+func TestFindModel(t *testing.T) {
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
+	assert.Equal(t, err, nil)
+	defer conn.Close()
+
+	qm := map[string]string{"id": "=1"}
+
+	m, err := FindModel(context.Background(), conn, descriptor, "Slice", qm)
+	assert.Equal(t, err, nil)
+
+	assert.Equal(t, m.GetFieldByName("id").(int32), int32(1))
+	assert.Equal(t, m.GetFieldByName("name").(string), "mockslice1")
+}
+
+func TestFindModelNoExist(t *testing.T) {
+	conn, descriptor, err := InitClient(INIT_DEFAULT)
+	assert.Equal(t, err, nil)
+	defer conn.Close()
+
+	qm := map[string]string{"id": "=77"}
+
+	_, err = FindModel(context.Background(), conn, descriptor, "Slice", qm)
+	assert.NotEqual(t, err, nil)
+
+	_, matched := err.(*corderrors.ModelNotFoundError)
+	assert.True(t, matched)
 }
 
 func TestDeleteModel(t *testing.T) {

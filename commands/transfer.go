@@ -17,9 +17,8 @@
 package commands
 
 import (
-	"errors"
-	"fmt"
 	flags "github.com/jessevdk/go-flags"
+	corderrors "github.com/opencord/cordctl/error"
 	"strings"
 )
 
@@ -76,11 +75,11 @@ func (options *TransferUpload) Execute(args []string) error {
 	uri := options.Args.URI
 
 	if IsFileUri(local_name) {
-		return errors.New("local_name argument should not be a uri")
+		return corderrors.NewInvalidInputError("local_name argument should not be a uri")
 	}
 
 	if !IsFileUri(uri) {
-		return errors.New("uri argument should be a file:// uri")
+		return corderrors.NewInvalidInputError("uri argument should be a file:// uri")
 	}
 
 	h, upload_result, err := UploadFile(conn, descriptor, local_name, uri, options.ChunkSize)
@@ -89,9 +88,9 @@ func (options *TransferUpload) Execute(args []string) error {
 	}
 
 	if upload_result.GetFieldByName("checksum").(string) != h.GetChecksum() {
-		return fmt.Errorf("Checksum mismatch, expected=%s, received=%s",
-			h.GetChecksum(),
-			upload_result.GetFieldByName("checksum").(string))
+		return corderrors.WithStackTrace(&corderrors.ChecksumMismatchError{
+			Expected: h.GetChecksum(),
+			Actual:   upload_result.GetFieldByName("checksum").(string)})
 	}
 
 	data := make([]TransferOutput, 1)
@@ -120,11 +119,11 @@ func (options *TransferDownload) Execute(args []string) error {
 	uri := options.Args.URI
 
 	if IsFileUri(local_name) {
-		return errors.New("local_name argument should not be a uri")
+		return corderrors.NewInvalidInputError("local_name argument should not be a uri")
 	}
 
 	if !IsFileUri(uri) {
-		return errors.New("uri argument should be a file:// uri")
+		return corderrors.NewInvalidInputError("uri argument should be a file:// uri")
 	}
 
 	h, err := DownloadFile(conn, descriptor, uri, local_name)

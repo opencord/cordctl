@@ -19,6 +19,7 @@ package main
 import (
 	flags "github.com/jessevdk/go-flags"
 	"github.com/opencord/cordctl/commands"
+	corderrors "github.com/opencord/cordctl/error"
 	"os"
 	"path"
 )
@@ -48,9 +49,18 @@ func main() {
 			if real.Type == flags.ErrHelp {
 				return
 			}
-		} else {
-			panic(err)
 		}
+
+		corderror, ok := err.(corderrors.CordCtlError)
+		if ok {
+			if corderror.ShouldDumpStack() || commands.GlobalOptions.Debug {
+				os.Stderr.WriteString("\n" + corderror.Stack())
+			}
+		}
+
+		// parser.ParseArgs already printed the error message
+		// Any stack trace emitted by panic() here would be of main() and not useful
+		// So just exit and be done with it.
 		os.Exit(1)
 	}
 }

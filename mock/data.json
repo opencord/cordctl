@@ -48,7 +48,7 @@
     {
         "method": "GetSlice",
         "input": {"id": 77},
-        "error": { "code": 2, "message": "Slice matching query does not exist."}
+        "error": { "code": 5, "message": "Slice matching query does not exist."}
     },
     {
         "method": "ListSlice",
@@ -134,7 +134,7 @@
     {
         "method": "UpdateSlice",
         "input": { "id": 77, "name": "mockslice1_newname"},
-        "error": { "code": 2, "message": "Slice matching query does not exist."}
+        "error": { "code": 5, "message": "Slice matching query does not exist."}
     },
     {
         "method": "CreateSlice",
@@ -153,7 +153,7 @@
     {
         "method": "DeleteSlice",
         "input": {"id": 77},
-        "error": { "code": 2, "message": "Slice matching query does not exist."}
+        "error": { "code": 5, "message": "Slice matching query does not exist."}
     },
     {
         "method": "GetLoadStatus",
