@@ -18,9 +18,8 @@ package commands
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	flags "github.com/jessevdk/go-flags"
+	corderrors "github.com/opencord/cordctl/error"
 	"time"
 )
 
@@ -107,13 +106,13 @@ func (options *BackupCreate) Execute(args []string) error {
 
 	// we've failed. leave.
 	if status != "created" {
-		return errors.New("BackupOp status is " + status)
+		return corderrors.NewInternalError("BackupOp status is %s", status)
 	}
 
 	// STEP 3: Retrieve URI
 	backupfile_id := completed_backupop.GetFieldByName("file_id").(int32)
 	if backupfile_id == 0 {
-		return errors.New("BackupOp.file_id is not set")
+		return corderrors.NewInternalError("BackupOp.file_id is not set")
 	}
 
 	completed_backupfile, err := GetModel(ctx, conn, descriptor, "BackupFile", backupfile_id)
@@ -136,9 +135,9 @@ func (options *BackupCreate) Execute(args []string) error {
 	// STEP 5: Verify checksum
 
 	if completed_backupfile.GetFieldByName("checksum").(string) != h.GetChecksum() {
-		return fmt.Errorf("Checksum mismatch, received=%s, expected=%s",
-			h.GetChecksum(),
-			completed_backupfile.GetFieldByName("checksum").(string))
+		return corderrors.WithStackTrace(&corderrors.ChecksumMismatchError{
+			Actual:   h.GetChecksum(),
+			Expected: completed_backupfile.GetFieldByName("checksum").(string)})
 	}
 
 	// STEP 6: Show results
@@ -188,15 +187,15 @@ func (options *BackupRestore) Execute(args []string) error {
 
 	upload_status := GetEnumValue(upload_result, "status")
 	if upload_status != "SUCCESS" {
-		return errors.New("Upload status was " + upload_status)
+		return corderrors.NewInternalError("Upload status was %s", upload_status)
 	}
 
 	// STEP 2: Verify checksum
 
 	if upload_result.GetFieldByName("checksum").(string) != h.GetChecksum() {
-		return fmt.Errorf("Checksum mismatch, expected=%s, received=%s",
-			h.GetChecksum(),
-			upload_result.GetFieldByName("checksum").(string))
+		return corderrors.WithStackTrace(&corderrors.ChecksumMismatchError{
+			Expected: h.GetChecksum(),
+			Actual:   upload_result.GetFieldByName("checksum").(string)})
 	}
 
 	// STEP 2: Create a BackupFile object
