@@ -18,6 +18,7 @@ package commands
 
 import (
 	"context"
+	corderrors "github.com/opencord/cordctl/error"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -60,13 +61,35 @@ func TestDecodeOperator(t *testing.T) {
 	assert.Equal(t, err, nil)
 }
 
-func TestCommaSeparatedQueryStringsToMap(t *testing.T) {
+func TestCommaSeparatedQueryToMap(t *testing.T) {
 	m, err := CommaSeparatedQueryToMap("foo=7,bar!=stuff, x = 5, y= 27", true)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, m["foo"], "=7")
 	assert.Equal(t, m["bar"], "!=stuff")
 	assert.Equal(t, m["x"], "= 5")
 	assert.Equal(t, m["y"], "= 27")
+}
+
+func TestCommaSeparatedQueryToMapIllegal(t *testing.T) {
+	// Query string missing operator
+	_, err := CommaSeparatedQueryToMap("foo", true)
+
+	_, matched := err.(*corderrors.IllegalQueryError)
+	assert.True(t, matched)
+
+	// Query string is contains an empty element
+	_, err = CommaSeparatedQueryToMap(",foo=bar", true)
+
+	_, matched = err.(*corderrors.IllegalQueryError)
+	assert.True(t, matched)
+}
+
+func TestCommaSeparatedQueryToMapEmpty(t *testing.T) {
+	// Query string missing operator
+	m, err := CommaSeparatedQueryToMap("", true)
+
+	assert.Equal(t, err, nil)
+	assert.Equal(t, len(m), 0)
 }
 
 func TestTypeConvert(t *testing.T) {
@@ -96,7 +119,8 @@ func TestCheckModelName(t *testing.T) {
 	assert.Equal(t, err, nil)
 
 	err = CheckModelName(descriptor, "DoesNotExist")
-	assert.Equal(t, err.Error(), "Model DoesNotExist does not exist. Use `cordctl models available` to get a list of available models")
+	_, matched := err.(*corderrors.UnknownModelTypeError)
+	assert.True(t, matched)
 }
 
 func TestCreateModel(t *testing.T) {

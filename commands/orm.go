@@ -25,6 +25,7 @@ import (
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic"
+	corderrors "github.com/opencord/cordctl/error"
 	"google.golang.org/grpc"
 	"io"
 	"strconv"
@@ -109,7 +110,8 @@ func (h *QueryEventHandler) GetParams(msg proto.Message) error {
 
 		field_descriptor := h.Model.FindFieldByName(field_name)
 		if field_descriptor == nil {
-			return fmt.Errorf("Field %s does not exist", field_name)
+			return corderrors.WithStackTrace(&corderrors.FieldDoesNotExistError{ModelName: h.Model.GetName(), FieldName: field_name})
+			//return fmt.Errorf("Field %s does not exist", field_name)
 		}
 
 		field_type := field_descriptor.GetType()
@@ -168,7 +170,8 @@ func QueryStringsToMap(query_args []string, allow_inequality bool) (map[string]s
 			}
 		}
 		if operator_pos == -1 {
-			return nil, fmt.Errorf("Illegal operator/value string %s", query_str)
+			return nil, corderrors.WithStackTrace(&corderrors.IllegalQueryError{Query: query_str})
+			//return nil, fmt.Errorf("Illegal operator/value string %s", query_str)
 		}
 		queries[strings.TrimSpace(query_str[:operator_pos])] = query_str[operator_pos:]
 	}
@@ -193,11 +196,13 @@ func TypeConvert(source grpcurl.DescriptorSource, modelName string, field_name s
 	}
 	model_md, ok := model_descriptor.(*desc.MessageDescriptor)
 	if !ok {
-		return nil, fmt.Errorf("Failed to convert model %s to a messagedescriptor", modelName)
+		return nil, corderrors.WithStackTrace(&corderrors.TypeConversionError{Source: modelName, Destination: "messageDescriptor"})
+		//return nil, fmt.Errorf("Failed to convert model %s to a messagedescriptor", modelName)
 	}
 	field_descriptor := model_md.FindFieldByName(field_name)
 	if field_descriptor == nil {
-		return nil, fmt.Errorf("Field %s does not exist in model %s", field_name, modelName)
+		return nil, corderrors.WithStackTrace(&corderrors.FieldDoesNotExistError{ModelName: modelName, FieldName: field_name})
+		//return nil, fmt.Errorf("Field %s does not exist in model %s", field_name, modelName)
 	}
 	field_type := field_descriptor.GetType()
 
@@ -254,7 +259,8 @@ func CheckModelName(source grpcurl.DescriptorSource, name string) error {
 	}
 	_, present := models[name]
 	if !present {
-		return errors.New("Model " + name + " does not exist. Use `cordctl models available` to get a list of available models")
+		return corderrors.WithStackTrace(&corderrors.UnknownModelTypeError{Name: name})
+		//return errors.New("Model " + name + " does not exist. Use `cordctl models available` to get a list of available models")
 	}
 	return nil
 }
