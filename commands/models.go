@@ -22,6 +22,7 @@ import (
 	"github.com/fullstorydev/grpcurl"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/jhump/protoreflect/dynamic"
+	corderrors "github.com/opencord/cordctl/error"
 	"google.golang.org/grpc"
 	"sort"
 	"strings"
@@ -190,7 +191,7 @@ func GetFilterKind(kindArg string) (string, error) {
 
 	val, ok := kindMap[strings.ToLower(kindArg)]
 	if !ok {
-		return "", fmt.Errorf("Failed to understand model state %s", kindArg)
+		return "", corderrors.WithStackTrace(&corderrors.UnknownModelStateError{Name: kindArg})
 	}
 
 	return val, nil
@@ -216,7 +217,7 @@ func GetIDList(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, model
 	}
 
 	if (exclusiveCount == 0) || (exclusiveCount > 1) {
-		return nil, fmt.Errorf("Use either an ID, --filter, or --all to specify which models to operate on")
+		return nil, corderrors.WithStackTrace(&corderrors.FilterRequiredError{})
 	}
 
 	queries, err := CommaSeparatedQueryToMap(filter, true)
@@ -236,10 +237,10 @@ func GetIDList(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, model
 			ids[i] = model.GetFieldByName("id").(int32)
 		}
 		if len(ids) == 0 {
-			return nil, fmt.Errorf("Filter matches no objects")
+			return nil, corderrors.WithStackTrace(&corderrors.NoMatchError{})
 		} else if len(ids) > 1 {
 			if !Confirmf("Filter matches %d objects. Continue [y/n] ? ", len(models)) {
-				return nil, fmt.Errorf("Aborted by user")
+				return nil, corderrors.WithStackTrace(&corderrors.AbortedError{})
 			}
 		}
 	}
@@ -353,7 +354,7 @@ func (options *ModelUpdate) Execute(args []string) error {
 
 	if (len(options.IDArgs.ID) == 0 && len(options.Filter) == 0) ||
 		(len(options.IDArgs.ID) != 0 && len(options.Filter) != 0) {
-		return fmt.Errorf("Use either an ID or a --filter to specify which models to update")
+		return corderrors.WithStackTrace(&corderrors.FilterRequiredError{})
 	}
 
 	queries, err := CommaSeparatedQueryToMap(options.Filter, true)
@@ -386,10 +387,10 @@ func (options *ModelUpdate) Execute(args []string) error {
 	}
 
 	if len(models) == 0 {
-		return fmt.Errorf("Filter matches no objects")
+		return corderrors.WithStackTrace(&corderrors.NoMatchError{})
 	} else if len(models) > 1 {
 		if !Confirmf("Filter matches %d objects. Continue [y/n] ? ", len(models)) {
-			return fmt.Errorf("Aborted by user")
+			return corderrors.WithStackTrace(&corderrors.AbortedError{})
 		}
 	}
 
