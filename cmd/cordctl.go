@@ -17,8 +17,10 @@
 package main
 
 import (
+	"fmt"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/opencord/cordctl/commands"
+	corderror "github.com/opencord/cordctl/error"
 	"os"
 	"path"
 )
@@ -48,9 +50,16 @@ func main() {
 			if real.Type == flags.ErrHelp {
 				return
 			}
-		} else {
-			panic(err)
 		}
-		os.Exit(1)
+
+		corderror, ok := err.(corderror.CordCtlError)
+		if ok {
+			if corderror.ShouldDumpStack() {
+				os.Stderr.WriteString(corderror.Stack())
+			}
+			os.Exit(1)
+		}
+
+		panic(err)
 	}
 }
