@@ -18,6 +18,7 @@ package commands
 
 import (
 	"context"
+	corderrors "github.com/opencord/cordctl/error"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -96,7 +97,8 @@ func TestCheckModelName(t *testing.T) {
 	assert.Equal(t, err, nil)
 
 	err = CheckModelName(descriptor, "DoesNotExist")
-	assert.Equal(t, err.Error(), "Model DoesNotExist does not exist. Use `cordctl models available` to get a list of available models")
+	_, okay := err.(*corderrors.UnknownModelTypeError)
+	assert.True(t, okay)
 }
 
 func TestCreateModel(t *testing.T) {

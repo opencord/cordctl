@@ -18,8 +18,8 @@ package commands
 
 import (
 	"errors"
-	"fmt"
 	flags "github.com/jessevdk/go-flags"
+	corderrors "github.com/opencord/cordctl/error"
 	"strings"
 )
 
@@ -89,9 +89,9 @@ func (options *TransferUpload) Execute(args []string) error {
 	}
 
 	if upload_result.GetFieldByName("checksum").(string) != h.GetChecksum() {
-		return fmt.Errorf("Checksum mismatch, expected=%s, received=%s",
-			h.GetChecksum(),
-			upload_result.GetFieldByName("checksum").(string))
+		return corderrors.WithStackTrace(&corderrors.ChecksumMismatchError{
+			Expected: h.GetChecksum(),
+			Actual:   upload_result.GetFieldByName("checksum").(string)})
 	}
 
 	data := make([]TransferOutput, 1)

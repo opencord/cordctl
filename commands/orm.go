@@ -25,6 +25,7 @@ import (
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic"
+	corderrors "github.com/opencord/cordctl/error"
 	"google.golang.org/grpc"
 	"io"
 	"strconv"
@@ -254,7 +255,8 @@ func CheckModelName(source grpcurl.DescriptorSource, name string) error {
 	}
 	_, present := models[name]
 	if !present {
-		return errors.New("Model " + name + " does not exist. Use `cordctl models available` to get a list of available models")
+		return corderrors.WithStackTrace(&corderrors.UnknownModelTypeError{Name: name})
+		//return errors.New("Model " + name + " does not exist. Use `cordctl models available` to get a list of available models")
 	}
 	return nil
 }
