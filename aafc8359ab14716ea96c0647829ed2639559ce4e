@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "51dbc425_3ead7877",
+        "filename": "error/error.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2019-06-20T19:12:38Z",
+      "side": 1,
+      "message": "Sure, I think that\u0027s a good plan.",
+      "parentUuid": "ab1573ec_9f1c2679",
+      "range": {
+        "startLine": 36,
+        "startChar": 11,
+        "endLine": 36,
+        "endChar": 18
+      },
+      "revId": "aafc8359ab14716ea96c0647829ed2639559ce4e",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "898d8aed_646e8f4c",
         "filename": "error/error.go",
         "patchSetId": 4
@@ -36,6 +60,24 @@
       "writtenOn": "2019-06-20T18:40:31Z",
       "side": 1,
       "message": "always interesting when to decide to dump for a user command. is it done on unexpected situations? or only in unexpected situations when there is a --debug or --dev flag, so that user don\u0027t see the dump but a developer could. then you risk not being able to reproduce. tricky.",
+      "revId": "aafc8359ab14716ea96c0647829ed2639559ce4e",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "100abded_39e86c17",
+        "filename": "error/error.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2019-06-20T19:12:38Z",
+      "side": 1,
+      "message": "I think you\u0027re right there\u0027s a grey are where the decision is difficult. There\u0027s cases where it\u0027s clear that dumping stack is not necessary, for example if we\u0027re sure the user made a human error in supplying invalid input. There\u0027s cases where we know we should dump stack, for example an assertion that\u0027s not supposed to trigger, or an error coming from a lower-level library that we don\u0027t know how to handle. For things in the middle I think we\u0027ll just need to use our best judgement.",
+      "parentUuid": "898d8aed_646e8f4c",
       "revId": "aafc8359ab14716ea96c0647829ed2639559ce4e",
       "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
       "unresolved": false
