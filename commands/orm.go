@@ -271,9 +271,9 @@ func CreateModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, mod
 	}
 	err := grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.xos.Create"+modelName, headers, h, h.GetParams)
 	if err != nil {
-		return err
+		return corderrors.RpcErrorWithModelNameToCordError(err, modelName)
 	} else if h.Status != nil && h.Status.Err() != nil {
-		return h.Status.Err()
+		return corderrors.RpcErrorWithModelNameToCordError(h.Status.Err(), modelName)
 	}
 
 	resp, err := dynamic.AsDynamicMessage(h.Response)
@@ -302,9 +302,9 @@ func UpdateModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, mod
 	}
 	err := grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.xos.Update"+modelName, headers, h, h.GetParams)
 	if err != nil {
-		return err
+		return corderrors.RpcErrorWithModelNameToCordError(err, modelName)
 	} else if h.Status != nil && h.Status.Err() != nil {
-		return h.Status.Err()
+		return corderrors.RpcErrorWithModelNameToCordError(h.Status.Err(), modelName)
 	}
 
 	resp, err := dynamic.AsDynamicMessage(h.Response)
@@ -440,11 +440,11 @@ func ListModels(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.D
 	h := &RpcEventHandler{}
 	err := grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.xos.List"+modelName, headers, h, h.GetParams)
 	if err != nil {
-		return nil, err
+		return nil, corderrors.RpcErrorWithModelNameToCordError(err, modelName)
 	}
 
 	if h.Status != nil && h.Status.Err() != nil {
-		return nil, h.Status.Err()
+		return nil, corderrors.RpcErrorWithModelNameToCordError(h.Status.Err(), modelName)
 	}
 
 	d, err := dynamic.AsDynamicMessage(h.Response)
@@ -489,11 +489,11 @@ func FilterModels(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl
 	}
 	err = grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.xos.Filter"+modelName, headers, h, h.GetParams)
 	if err != nil {
-		return nil, err
+		return nil, corderrors.RpcErrorWithQueriesToCordError(err, modelName, queries)
 	}
 
 	if h.Status != nil && h.Status.Err() != nil {
-		return nil, h.Status.Err()
+		return nil, corderrors.RpcErrorWithQueriesToCordError(h.Status.Err(), modelName, queries)
 	}
 
 	d, err := dynamic.AsDynamicMessage(h.Response)
@@ -526,7 +526,9 @@ func FindModel(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.De
 	}
 
 	if len(models) == 0 {
-		return nil, corderrors.WithStackTrace(&corderrors.ModelNotFoundError{ModelName: modelName, Queries: queries})
+		cordError := &corderrors.ModelNotFoundError{}
+		cordError.Obj = corderrors.ObjectReference{ModelName: modelName, Queries: queries}
+		return nil, corderrors.WithStackTrace(cordError)
 	}
 
 	return models[0], nil
@@ -621,11 +623,11 @@ func DeleteModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, mod
 	}
 	err := grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.xos.Delete"+modelName, headers, h, h.GetParams)
 	if err != nil {
-		return err
+		return corderrors.RpcErrorWithIdToCordError(err, modelName, id)
 	}
 
 	if h.Status != nil && h.Status.Err() != nil {
-		return h.Status.Err()
+		return corderrors.RpcErrorWithIdToCordError(h.Status.Err(), modelName, id)
 	}
 
 	_, err = dynamic.AsDynamicMessage(h.Response)
