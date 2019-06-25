@@ -77,14 +77,62 @@ type CordCtlError interface {
 	AddStackTrace(skip int)
 }
 
+/* ObjectReference contains information about the object that the error applies to.
+   This may be empty (ModelName="") or it may contain a ModelName together with
+   option Id or Queries.
+*/
+
+type ObjectReference struct {
+	ModelName string
+	Id        int32
+	Queries   map[string]string
+}
+
+// Returns true if the reference is populated
+func (f *ObjectReference) IsValid() bool {
+	return (f.ModelName != "")
+}
+
+func (f *ObjectReference) String() string {
+	if !f.IsValid() {
+		// The reference is empty
+		return ""
+	}
+
+	if f.Queries != nil {
+		kv := make([]string, 0, len(f.Queries))
+		for k, v := range f.Queries {
+			kv = append(kv, fmt.Sprintf("%s%s", k, v))
+		}
+		return fmt.Sprintf("%s [%v]", f.ModelName, strings.Join(kv, ", "))
+	}
+
+	if f.Id > 0 {
+		return fmt.Sprintf("%s [id=%d]", f.ModelName, f.Id)
+	}
+
+	return fmt.Sprintf("%s", f.ModelName)
+}
+
+// Returns " on model ModelName [id]" if the reference is populated, or "" otherwise.
+func (f *ObjectReference) Clause() string {
+	if !f.IsValid() {
+		// The reference is empty
+		return ""
+	}
+
+	return fmt.Sprintf(" on model %s", f.String())
+}
+
 /* BaseError supports attaching stack traces to errors
  *    Borrowed the technique from github.com/go-errors. Decided against using go-errors directly since it requires
  *    wrapping our error classes. Instead, incorporated the stack trace directly into our error class.
  */
 
 type BaseError struct {
-	stack  []uintptr
-	frames []go_errors.StackFrame
+	Encapsulated error                  // in case this error encapsulates an error from a lower level
+	stack        []uintptr              // for stack trace
+	frames       []go_errors.StackFrame // for stack trace
 }
 
 func (f *BaseError) AddStackTrace(skip int) {
@@ -263,17 +311,21 @@ func (f VersionConstraintError) Error() string {
 // A model was not found
 type ModelNotFoundError struct {
 	UserError
-	ModelName string
-	Id        int32
-	Queries   map[string]string
+	Obj ObjectReference
 }
 
 func (f ModelNotFoundError) Error() string {
-	if f.Queries != nil {
-		return fmt.Sprintf("%s: %s query %v not Found", prefix, f.ModelName, f.Queries)
-	} else {
-		return fmt.Sprintf("%s: Model %s id %d not Found", prefix, f.ModelName, f.Id)
-	}
+	return fmt.Sprintf("%s: Not Found%s", prefix, f.Obj.Clause())
+}
+
+// Permission Denied
+type PermissionDeniedError struct {
+	UserError
+	Obj ObjectReference
+}
+
+func (f PermissionDeniedError) Error() string {
+	return fmt.Sprintf("%s: Permission Denied%s. Please verify username and password are correct", prefix, f.Obj.Clause())
 }
 
 // InvalidInputError is a catch-all for user mistakes that aren't covered elsewhere
@@ -325,17 +377,48 @@ func SetPrefix(s string) {
 	prefix = s
 }
 
-// Convert an RPC error into a Cord Error
-func RpcErrorWithIdToCordError(err error, modelName string, id int32) error {
+/* RpcErrorWithObjToCordError
+ *
+ * Convert an RPC error into a Cord Error. The ObjectReference accommodates allows methods to attach
+ * object-related information to the error, and this varies by method. For example the Delete()
+ * method comes with an ModelName and an Id. The List() method has only a ModelName.
+ *
+ * Stubs (RpcErrorWithModelNameToCordError) are provided below to make common usage more convenient.
+ */
+
+func RpcErrorWithObjToCordError(err error, obj ObjectReference) error {
 	if err == nil {
 		return err
 	}
 	if strings.Contains(err.Error(), "rpc error: code = NotFound") {
-		err := &ModelNotFoundError{ModelName: modelName, Id: id}
-		err.AddStackTrace(2)
+		cordErr := &ModelNotFoundError{Obj: obj}
+		cordErr.Encapsulated = err
+		cordErr.AddStackTrace(2)
 		return err
 	}
+	if strings.Contains(err.Error(), "rpc error: code = PermissionDenied") {
+		cordErr := &PermissionDeniedError{Obj: obj}
+		cordErr.Encapsulated = err
+		cordErr.AddStackTrace(2)
+		return cordErr
+	}
 	return err
+}
+
+func RpcErrorToCordError(err error) error {
+	return RpcErrorWithObjToCordError(err, ObjectReference{})
+}
+
+func RpcErrorWithModelNameToCordError(err error, modelName string) error {
+	return RpcErrorWithObjToCordError(err, ObjectReference{ModelName: modelName})
+}
+
+func RpcErrorWithIdToCordError(err error, modelName string, id int32) error {
+	return RpcErrorWithObjToCordError(err, ObjectReference{ModelName: modelName, Id: id})
+}
+
+func RpcErrorWithQueriesToCordError(err error, modelName string, queries map[string]string) error {
+	return RpcErrorWithObjToCordError(err, ObjectReference{ModelName: modelName, Queries: queries})
 }
 
 // Module initialization. Automatically defaults prefix to program name
