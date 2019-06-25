@@ -27,7 +27,6 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	reflectpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
-	"google.golang.org/grpc/status"
 	"log"
 	"os"
 	"strings"
@@ -57,11 +56,11 @@ func GetVersion(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource) (*dy
 	h := &RpcEventHandler{}
 	err := grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.utility.GetVersion", headers, h, h.GetParams)
 	if err != nil {
-		return nil, err
+		return nil, corderrors.RpcErrorToCordError(err)
 	}
 
 	if h.Status != nil && h.Status.Err() != nil {
-		return nil, h.Status.Err()
+		return nil, corderrors.RpcErrorToCordError(h.Status.Err())
 	}
 
 	d, err := dynamic.AsDynamicMessage(h.Response)
@@ -166,17 +165,4 @@ func Confirmf(format string, args ...interface{}) bool {
 			return false
 		}
 	}
-}
-
-func HumanReadableError(err error) string {
-	st, ok := status.FromError(err)
-	if ok {
-		grpc_message := st.Message()
-		if strings.HasPrefix(grpc_message, "Exception calling application: ") {
-			return st.Message()[31:]
-		} else {
-			return st.Message()
-		}
-	}
-	return err.Error()
 }

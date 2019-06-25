@@ -350,7 +350,7 @@ func TestModelDeleteUsingFilter(t *testing.T) {
 }
 
 func TestModelDeleteNoExist(t *testing.T) {
-	expected := `[{"id":77, "message":"Slice matching query does not exist."}]`
+	expected := `[{"id":77, "message":"Not Found [on model Slice <id=77>]"}]`
 
 	got := new(bytes.Buffer)
 	OutputStream = got
