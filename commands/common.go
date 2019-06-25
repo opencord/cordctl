@@ -57,11 +57,11 @@ func GetVersion(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource) (*dy
 	h := &RpcEventHandler{}
 	err := grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.utility.GetVersion", headers, h, h.GetParams)
 	if err != nil {
-		return nil, err
+		return nil, corderrors.RpcErrorToCordError(err)
 	}
 
 	if h.Status != nil && h.Status.Err() != nil {
-		return nil, h.Status.Err()
+		return nil, corderrors.RpcErrorToCordError(h.Status.Err())
 	}
 
 	d, err := dynamic.AsDynamicMessage(h.Response)
