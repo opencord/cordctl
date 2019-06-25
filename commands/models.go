@@ -162,9 +162,9 @@ func InitModelStatusOutput(unbuffered bool, count int) ModelStatusOutput {
 func UpdateModelStatusOutput(output *ModelStatusOutput, i int, id interface{}, status string, err error, final bool) {
 	if err != nil {
 		if output.Unbuffered {
-			fmt.Printf("%v: %s\n", id, HumanReadableError(err))
+			fmt.Printf("%v: %s\n", id, err)
 		}
-		output.Rows[i] = ModelStatusOutputRow{Id: id, Message: HumanReadableError(err)}
+		output.Rows[i] = ModelStatusOutputRow{Id: id, Message: err.Error()}
 	} else {
 		if output.Unbuffered && final {
 			fmt.Println(id)

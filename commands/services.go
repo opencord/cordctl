@@ -21,6 +21,7 @@ import (
 	"github.com/fullstorydev/grpcurl"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/jhump/protoreflect/dynamic"
+	corderrors "github.com/opencord/cordctl/error"
 )
 
 const (
@@ -62,11 +63,11 @@ func (options *ServiceList) Execute(args []string) error {
 	h := &RpcEventHandler{}
 	err = grpcurl.InvokeRPC(ctx, descriptor, conn, "xos.dynamicload.GetLoadStatus", headers, h, h.GetParams)
 	if err != nil {
-		return err
+		return corderrors.RpcErrorToCordError(err)
 	}
 
 	if h.Status != nil && h.Status.Err() != nil {
-		return h.Status.Err()
+		return corderrors.RpcErrorToCordError(h.Status.Err())
 	}
 
 	d, err := dynamic.AsDynamicMessage(h.Response)

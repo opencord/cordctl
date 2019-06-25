@@ -19,12 +19,10 @@ package error
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"testing"
 )
-
-func init() {
-	SetPrefix("cordctl")
-}
 
 func TestGenericError(t *testing.T) {
 	var err error
@@ -45,10 +43,8 @@ func TestChecksumMismatchError(t *testing.T) {
 
 	err = WithStackTrace(&ChecksumMismatchError{Actual: "123", Expected: "456"})
 
-	//assert.Equal(t, err.(*ChecksumMismatchError).Stack(), "foo")
-
 	// Check that the Error() function returns the right text
-	assert.Equal(t, err.Error(), "cordctl: checksum mismatch (actual=456, expected=123)")
+	assert.Equal(t, err.Error(), "checksum mismatch (actual=456, expected=123)")
 
 	// Type conversion from `error` to ChecksumMismatchError should succeed
 	_, ok := err.(*ChecksumMismatchError)
@@ -77,5 +73,77 @@ func TestUnknownModelTypeError(t *testing.T) {
 
 	err = WithStackTrace(&UnknownModelTypeError{Name: "foo"})
 
-	_ = err
+	// Check that the Error() function returns the right text
+	assert.Equal(t, err.Error(), "Model foo does not exist. Use `cordctl modeltype list` to get a list of available models")
+}
+
+func TestRpcErrorToCordError(t *testing.T) {
+	// InternalError
+	err := status.Error(codes.Unknown, "A fake Unknown error")
+
+	cordErr := RpcErrorToCordError(err)
+
+	_, ok := cordErr.(*InternalError)
+	assert.True(t, ok)
+	assert.Equal(t, cordErr.Error(), "Internal Error: A fake Unknown error")
+
+	// NotFound
+	err = status.Error(codes.NotFound, "A fake not found error")
+
+	cordErr = RpcErrorToCordError(err)
+
+	_, ok = cordErr.(*ModelNotFoundError)
+	assert.True(t, ok)
+	assert.Equal(t, cordErr.Error(), "Not Found")
+
+	// PermissionDeniedError
+	err = status.Error(codes.PermissionDenied, "A fake Permission error")
+
+	cordErr = RpcErrorToCordError(err)
+
+	_, ok = cordErr.(*PermissionDeniedError)
+	assert.True(t, ok)
+	assert.Equal(t, cordErr.Error(), "Permission Denied. Please verify username and password are correct")
+}
+
+func TestRpcErrorWithModelNameToCordError(t *testing.T) {
+	// InternalError
+	err := status.Error(codes.Unknown, "A fake Unknown error")
+
+	cordErr := RpcErrorWithModelNameToCordError(err, "Foo")
+
+	_, ok := cordErr.(*InternalError)
+	assert.True(t, ok)
+	assert.Equal(t, cordErr.Error(), "Internal Error [on model Foo]: A fake Unknown error")
+}
+
+func TestRpcErrorWithIdToCordError(t *testing.T) {
+	// InternalError
+	err := status.Error(codes.Unknown, "A fake Unknown error")
+
+	cordErr := RpcErrorWithIdToCordError(err, "Foo", 7)
+
+	_, ok := cordErr.(*InternalError)
+	assert.True(t, ok)
+	assert.Equal(t, cordErr.Error(), "Internal Error [on model Foo <id=7>]: A fake Unknown error")
+}
+
+func TestRpcErrorWithQueriesToCordError(t *testing.T) {
+	// InternalError
+	err := status.Error(codes.Unknown, "A fake Unknown error")
+
+	cordErr := RpcErrorWithQueriesToCordError(err, "Foo", map[string]string{"id": "=3"})
+
+	_, ok := cordErr.(*InternalError)
+	assert.True(t, ok)
+	assert.Equal(t, cordErr.Error(), "Internal Error [on model Foo <id=3>]: A fake Unknown error")
+}
+
+func TestStackTrace(t *testing.T) {
+	var err error
+
+	err = WithStackTrace(&UnknownModelTypeError{Name: "foo"})
+
+	// goexit occurs near the end of the stack trace
+	assert.Contains(t, err.(CordCtlError).Stack(), "goexit")
 }

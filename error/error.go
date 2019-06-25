@@ -49,7 +49,7 @@ import (
 	"bytes"
 	"fmt"
 	go_errors "github.com/go-errors/errors"
-	"os"
+	"google.golang.org/grpc/status"
 	"runtime"
 	"strings"
 )
@@ -57,9 +57,6 @@ import (
 const (
 	MaxStackDepth = 50
 )
-
-// Prefix applied to all error messages. Initialized in module init() function from os.Args[0]
-var prefix string
 
 /* CordCtlError is the interface for errors created by cordctl.
  *    ShouldDumpStack()
@@ -77,14 +74,68 @@ type CordCtlError interface {
 	AddStackTrace(skip int)
 }
 
-/* BaseError supports attaching stack traces to errors
+/* ObjectReference contains information about the object that the error applies to.
+   This may be empty (ModelName="") or it may contain a ModelName together with
+   option Id or Queries.
+*/
+
+type ObjectReference struct {
+	ModelName string
+	Id        int32
+	Queries   map[string]string
+}
+
+// Returns true if the reference is populated
+func (f *ObjectReference) IsValid() bool {
+	return (f.ModelName != "")
+}
+
+func (f *ObjectReference) String() string {
+	if !f.IsValid() {
+		// The reference is empty
+		return ""
+	}
+
+	if f.Queries != nil {
+		kv := make([]string, 0, len(f.Queries))
+		for k, v := range f.Queries {
+			kv = append(kv, fmt.Sprintf("%s%s", k, v))
+		}
+		return fmt.Sprintf("%s <%v>", f.ModelName, strings.Join(kv, ", "))
+	}
+
+	if f.Id > 0 {
+		return fmt.Sprintf("%s <id=%d>", f.ModelName, f.Id)
+	}
+
+	return fmt.Sprintf("%s", f.ModelName)
+}
+
+// Returns " on model ModelName [id]" if the reference is populated, or "" otherwise.
+func (f *ObjectReference) Clause() string {
+	if !f.IsValid() {
+		// The reference is empty
+		return ""
+	}
+
+	return fmt.Sprintf(" [on model %s]", f.String())
+}
+
+/* BaseError
+ *
+ * Supports attaching stack traces to errors
  *    Borrowed the technique from github.com/go-errors. Decided against using go-errors directly since it requires
  *    wrapping our error classes. Instead, incorporated the stack trace directly into our error class.
+ *
+ * Also supports encapsulating error messages, so that a CordError can encapsulate the error message from a
+ * function that was called.
  */
 
 type BaseError struct {
-	stack  []uintptr
-	frames []go_errors.StackFrame
+	Obj          ObjectReference
+	Encapsulated error                  // in case this error encapsulates an error from a lower level
+	stack        []uintptr              // for stack trace
+	frames       []go_errors.StackFrame // for stack trace
 }
 
 func (f *BaseError) AddStackTrace(skip int) {
@@ -163,9 +214,9 @@ type ChecksumMismatchError struct {
 
 func (f ChecksumMismatchError) Error() string {
 	if f.Name != "" {
-		return fmt.Sprintf("%s %s: checksum mismatch (actual=%s, expected=%s)", prefix, f.Name, f.Expected, f.Actual)
+		return fmt.Sprintf("%s: checksum mismatch (actual=%s, expected=%s)", f.Name, f.Expected, f.Actual)
 	} else {
-		return fmt.Sprintf("%s: checksum mismatch (actual=%s, expected=%s)", prefix, f.Expected, f.Actual)
+		return fmt.Sprintf("checksum mismatch (actual=%s, expected=%s)", f.Expected, f.Actual)
 	}
 }
 
@@ -176,7 +227,7 @@ type UnknownModelTypeError struct {
 }
 
 func (f UnknownModelTypeError) Error() string {
-	return fmt.Sprintf("%s: Model %s does not exist. Use `cordctl modeltype list` to get a list of available models", prefix, f.Name)
+	return fmt.Sprintf("Model %s does not exist. Use `cordctl modeltype list` to get a list of available models", f.Name)
 }
 
 // User specified a model state that is not valid
@@ -186,7 +237,7 @@ type UnknownModelStateError struct {
 }
 
 func (f UnknownModelStateError) Error() string {
-	return fmt.Sprintf("%s: Model state %s does not exist", prefix, f.Name)
+	return fmt.Sprintf("Model state %s does not exist", f.Name)
 }
 
 // Command requires a filter be specified
@@ -224,7 +275,7 @@ type FieldDoesNotExistError struct {
 }
 
 func (f FieldDoesNotExistError) Error() string {
-	return fmt.Sprintf("%s: Model %s does not have field %s", prefix, f.ModelName, f.FieldName)
+	return fmt.Sprintf("Model %s does not have field %s", f.ModelName, f.FieldName)
 }
 
 // User specified a query string that is not properly formatted
@@ -234,7 +285,7 @@ type IllegalQueryError struct {
 }
 
 func (f IllegalQueryError) Error() string {
-	return fmt.Sprintf("%s: Illegal query string %s", prefix, f.Query)
+	return fmt.Sprintf("Illegal query string %s", f.Query)
 }
 
 // We failed to type convert something that we thought should have converted
@@ -245,7 +296,7 @@ type TypeConversionError struct {
 }
 
 func (f TypeConversionError) Error() string {
-	return fmt.Sprintf("%s: Failed to type convert from %s to %s", prefix, f.Source, f.Destination)
+	return fmt.Sprintf("Failed to type convert from %s to %s", f.Source, f.Destination)
 }
 
 // Version did not match a constraint
@@ -257,23 +308,25 @@ type VersionConstraintError struct {
 }
 
 func (f VersionConstraintError) Error() string {
-	return fmt.Sprintf("%s: %s version %s did not match constraint '%s'", prefix, f.Name, f.Version, f.Constraint)
+	return fmt.Sprintf("%s version %s did not match constraint '%s'", f.Name, f.Version, f.Constraint)
 }
 
 // A model was not found
 type ModelNotFoundError struct {
 	UserError
-	ModelName string
-	Id        int32
-	Queries   map[string]string
 }
 
 func (f ModelNotFoundError) Error() string {
-	if f.Queries != nil {
-		return fmt.Sprintf("%s: %s query %v not Found", prefix, f.ModelName, f.Queries)
-	} else {
-		return fmt.Sprintf("%s: Model %s id %d not Found", prefix, f.ModelName, f.Id)
-	}
+	return fmt.Sprintf("Not Found%s", f.Obj.Clause())
+}
+
+// Permission Denied
+type PermissionDeniedError struct {
+	UserError
+}
+
+func (f PermissionDeniedError) Error() string {
+	return fmt.Sprintf("Permission Denied%s. Please verify username and password are correct", f.Obj.Clause())
 }
 
 // InvalidInputError is a catch-all for user mistakes that aren't covered elsewhere
@@ -283,7 +336,7 @@ type InvalidInputError struct {
 }
 
 func (f InvalidInputError) Error() string {
-	return fmt.Sprintf("%s: %s", prefix, f.Message)
+	return fmt.Sprintf("%s", f.Message)
 }
 
 func NewInvalidInputError(format string, params ...interface{}) *InvalidInputError {
@@ -300,7 +353,7 @@ type InternalError struct {
 }
 
 func (f InternalError) Error() string {
-	return fmt.Sprintf("%s: %s", prefix, f.Message)
+	return fmt.Sprintf("Internal Error%s: %s", f.Obj.Clause(), f.Message)
 }
 
 func NewInternalError(format string, params ...interface{}) *InternalError {
@@ -320,25 +373,63 @@ func WithStackTrace(err CordCtlError) error {
 	return err
 }
 
-// Set the prefix rather than using os.Args[0]. This is useful for testing.
-func SetPrefix(s string) {
-	prefix = s
-}
+/* RpcErrorWithObjToCordError
+ *
+ * Convert an RPC error into a Cord Error. The ObjectReference allows methods to attach
+ * object-related information to the error, and this varies by method. For example the Delete()
+ * method comes with an ModelName and an Id. The List() method has only a ModelName.
+ *
+ * Stubs (RpcErrorWithModelNameToCordError) are provided below to make common usage more convenient.
+ */
 
-// Convert an RPC error into a Cord Error
-func RpcErrorWithIdToCordError(err error, modelName string, id int32) error {
+func RpcErrorWithObjToCordError(err error, obj ObjectReference) error {
 	if err == nil {
 		return err
 	}
-	if strings.Contains(err.Error(), "rpc error: code = NotFound") {
-		err := &ModelNotFoundError{ModelName: modelName, Id: id}
-		err.AddStackTrace(2)
-		return err
+
+	st, ok := status.FromError(err)
+	if ok {
+		switch st.Code().String() {
+		case "PermissionDenied":
+			cordErr := &PermissionDeniedError{}
+			cordErr.Obj = obj
+			cordErr.Encapsulated = err
+			cordErr.AddStackTrace(2)
+			return cordErr
+		case "NotFound":
+			cordErr := &ModelNotFoundError{}
+			cordErr.Obj = obj
+			cordErr.Encapsulated = err
+			cordErr.AddStackTrace(2)
+			return cordErr
+		case "Unknown":
+			msg := st.Message()
+			if strings.HasPrefix(msg, "Exception calling application: ") {
+				msg = msg[31:]
+			}
+			cordErr := &InternalError{Message: msg}
+			cordErr.Obj = obj
+			cordErr.Encapsulated = err
+			cordErr.AddStackTrace(2)
+			return cordErr
+		}
 	}
+
 	return err
 }
 
-// Module initialization. Automatically defaults prefix to program name
-func init() {
-	prefix = os.Args[0]
+func RpcErrorToCordError(err error) error {
+	return RpcErrorWithObjToCordError(err, ObjectReference{})
+}
+
+func RpcErrorWithModelNameToCordError(err error, modelName string) error {
+	return RpcErrorWithObjToCordError(err, ObjectReference{ModelName: modelName})
+}
+
+func RpcErrorWithIdToCordError(err error, modelName string, id int32) error {
+	return RpcErrorWithObjToCordError(err, ObjectReference{ModelName: modelName, Id: id})
+}
+
+func RpcErrorWithQueriesToCordError(err error, modelName string, queries map[string]string) error {
+	return RpcErrorWithObjToCordError(err, ObjectReference{ModelName: modelName, Queries: queries})
 }
