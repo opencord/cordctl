@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/opencord/cordctl/commands"
 	corderrors "github.com/opencord/cordctl/error"
@@ -26,7 +27,8 @@ import (
 
 func main() {
 
-	parser := flags.NewNamedParser(path.Base(os.Args[0]), flags.Default|flags.PassAfterNonOption)
+	parser := flags.NewNamedParser(path.Base(os.Args[0]),
+		flags.HelpFlag|flags.PassDoubleDash|flags.PassAfterNonOption)
 	_, err := parser.AddGroup("Global Options", "", &commands.GlobalOptions)
 	if err != nil {
 		panic(err)
@@ -58,9 +60,8 @@ func main() {
 			}
 		}
 
-		// parser.ParseArgs already printed the error message
-		// Any stack trace emitted by panic() here would be of main() and not useful
-		// So just exit and be done with it.
+		fmt.Fprintf(os.Stderr, "%s: %s\n", os.Args[0], err.Error())
+
 		os.Exit(1)
 	}
 }
