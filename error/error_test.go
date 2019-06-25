@@ -22,10 +22,6 @@ import (
 	"testing"
 )
 
-func init() {
-	SetPrefix("cordctl")
-}
-
 func TestGenericError(t *testing.T) {
 	var err error
 
@@ -48,7 +44,7 @@ func TestChecksumMismatchError(t *testing.T) {
 	//assert.Equal(t, err.(*ChecksumMismatchError).Stack(), "foo")
 
 	// Check that the Error() function returns the right text
-	assert.Equal(t, err.Error(), "cordctl: checksum mismatch (actual=456, expected=123)")
+	assert.Equal(t, err.Error(), "checksum mismatch (actual=456, expected=123)")
 
 	// Type conversion from `error` to ChecksumMismatchError should succeed
 	_, ok := err.(*ChecksumMismatchError)
@@ -77,5 +73,6 @@ func TestUnknownModelTypeError(t *testing.T) {
 
 	err = WithStackTrace(&UnknownModelTypeError{Name: "foo"})
 
-	_ = err
+	// Check that the Error() function returns the right text
+	assert.Equal(t, err.Error(), "Model foo does not exist. Use `cordctl modeltype list` to get a list of available models")
 }
