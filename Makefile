@@ -8,7 +8,7 @@ ifeq ($(GOPATH),)
 endif
 
 VERSION     ?= $(shell cat $(GOPATH)/src/github.com/opencord/cordctl/VERSION)
-GOVERSION    = $(shell go version 2>&1 | sed -E  's/.*(go[0-9]+\.[0-9]+\.[0-9]+).*/\1/g')
+GOVERSION    = $(shell go version 2>&1 | awk '{print $$3;}' )
 
 GITCOMMIT   ?= $(shell git log --pretty=format:"%h" -n 1)
 ifeq ($(shell git ls-files --others --modified --exclude-standard 2>/dev/null | wc -l | sed -e 's/ //g'),0)
