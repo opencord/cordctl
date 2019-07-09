@@ -22,6 +22,30 @@
       "revId": "95288eadcbbb49fc4a396eefa802be8ef5876e18",
       "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f91b3758_9eb3f472",
+        "filename": "README.md",
+        "patchSetId": 3
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2019-07-09T22:32:46Z",
+      "side": 1,
+      "message": "Correct on the first question.\nThe file is plaintext SQL at this time, but that may (and probably will at some point) change.",
+      "parentUuid": "8253c794_f23630a7",
+      "range": {
+        "startLine": 214,
+        "startChar": 86,
+        "endLine": 214,
+        "endChar": 262
+      },
+      "revId": "95288eadcbbb49fc4a396eefa802be8ef5876e18",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": true
     }
   ]
 }
