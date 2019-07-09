@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8253c794_f23630a7",
+        "filename": "README.md",
+        "patchSetId": 3
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 1000011
+      },
+      "writtenOn": "2019-07-09T22:04:42Z",
+      "side": 1,
+      "message": "So default is relative path, but absolute path can be provided?\n\nShould there be an extension on the filename in the examples?   (is it a .tgz?)",
+      "range": {
+        "startLine": 214,
+        "startChar": 86,
+        "endLine": 214,
+        "endChar": 262
+      },
+      "revId": "95288eadcbbb49fc4a396eefa802be8ef5876e18",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": true
+    }
+  ]
+}
