@@ -49,6 +49,7 @@ func main() {
 		if ok {
 			real := err.(*flags.Error)
 			if real.Type == flags.ErrHelp {
+				os.Stdout.WriteString(err.Error() + "\n")
 				return
 			}
 		}
