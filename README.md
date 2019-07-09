@@ -201,6 +201,26 @@ cordctl model list ONOSApp --state dirty
 > the model. For models that do not implement syncsteps or policies and do not have the side-effect of dirtying related models, the `setdirty`
 > command has no practical value, and the models may remain in perpetual dirty state.
 
+## Backup and Restore
+
+`cordctl` allows you to create and restore backups of the XOS data model. XOS backups are performed inside of the xos core container and include all live data in the data model. Backups are stored in a single file, which is downloaded to or uploaded from the pc running `cordctl` automatically.
+
+To create a backup, use the `backup create` command. For example,
+
+```bash
+cordctl backup create mybackup
+```
+
+This creates a backup and downloads it to the local file `mybackup` on your computer. If a simple filename or relative path is used, the backup is automatically stored relative to the current working directory. You may use an absolute path to store the file elsewhere. Creating the backup may take some time, and `cordctl` will emit some progress information during the process.
+
+Restoring the backup uses a similar command. For example,
+
+```bash
+cordctl backup restore mybackup
+```
+
+This uploads the file `mybackup` to XOS and then instructs XOS to restore that file. Upon successful completion of the restore, all existing data in the data model will be replaced by the contents of the restore file.
+
 ## Development Environment
 
 To run unit tests, `go-junit-report` and `gocover-obertura` tools must be installed. One way to do this is to install them with `go get`, and then ensure your `GOPATH` is part of your `PATH` (editing your `~/.profile` as necessary).
