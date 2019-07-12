@@ -18,7 +18,7 @@ package commands
 
 import (
 	"context"
-	corderrors "github.com/opencord/cordctl/error"
+	corderrors "github.com/opencord/cordctl/internal/pkg/error"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

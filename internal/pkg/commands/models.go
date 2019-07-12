@@ -22,7 +22,7 @@ import (
 	"github.com/fullstorydev/grpcurl"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/jhump/protoreflect/dynamic"
-	corderrors "github.com/opencord/cordctl/error"
+	corderrors "github.com/opencord/cordctl/internal/pkg/error"
 	"google.golang.org/grpc"
 	"sort"
 	"strings"
