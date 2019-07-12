@@ -17,34 +17,19 @@
 package commands
 
 import (
-	"bytes"
-	"github.com/opencord/cordctl/testutils"
+	"fmt"
+	"github.com/opencord/cordctl/pkg/testutils"
+	"os"
 	"testing"
 )
 
-func TestStatusList(t *testing.T) {
-	// use `python -m json.tool` to pretty-print json
-	expected := `[
-		{
-			"Component": "Database",
-			"Connection": "xos-db:5432",
-			"Name": "xos",
-			"Status": "OPERATIONAL",
-			"Version": "10.3"
-		}
-	]`
+// This TestMain is global to all tests in the `commands` package
 
-	got := new(bytes.Buffer)
-	OutputStream = got
-
-	var options StatusOpts
-	options.List.OutputAs = "json"
-	err := options.List.Execute([]string{})
-
+func TestMain(m *testing.M) {
+	err := testutils.StartMockServer("data.json")
 	if err != nil {
-		t.Errorf("%s: Received error %v", t.Name(), err)
-		return
+		fmt.Printf("Error when initializing mock server %v", err)
+		os.Exit(-1)
 	}
-
-	testutils.AssertJSONEqual(t, got.String(), expected)
+	os.Exit(m.Run())
 }

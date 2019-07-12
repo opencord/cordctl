@@ -24,7 +24,7 @@ import (
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic"
-	corderrors "github.com/opencord/cordctl/error"
+	corderrors "github.com/opencord/cordctl/internal/pkg/error"
 	"google.golang.org/grpc"
 	"io"
 	"strconv"

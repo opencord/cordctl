@@ -18,8 +18,8 @@ package commands
 
 import (
 	"bytes"
-	corderrors "github.com/opencord/cordctl/error"
-	"github.com/opencord/cordctl/testutils"
+	corderrors "github.com/opencord/cordctl/internal/pkg/error"
+	"github.com/opencord/cordctl/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
