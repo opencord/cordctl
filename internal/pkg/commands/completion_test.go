@@ -1,5 +1,6 @@
 /*
- * Copyright 2019-present Ciena Corporation
+ * Portions copyright 2019-present Open Networking Foundation
+ * Original copyright 2019-present Ciena Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,22 +17,23 @@
 package commands
 
 import (
-	"fmt"
-	flags "github.com/jessevdk/go-flags"
-	"github.com/opencord/cordctl/completion"
+	"bytes"
+	"github.com/opencord/cordctl/internal/pkg/completion"
+	"github.com/opencord/cordctl/pkg/testutils"
+	"testing"
 )
 
-type BashOptions struct{}
+func TestCompletion(t *testing.T) {
+	got := new(bytes.Buffer)
+	OutputStream = got
 
-type CompletionOptions struct {
-	BashOptions `command:"bash"`
-}
+	var options CompletionOptions
+	err := options.Execute([]string{})
 
-func RegisterCompletionCommands(parent *flags.Parser) {
-	parent.AddCommand("completion", "generate shell compleition", "Commands to generate shell completion information", &CompletionOptions{})
-}
+	if err != nil {
+		t.Errorf("%s: Received error %v", t.Name(), err)
+		return
+	}
 
-func (options *BashOptions) Execute(args []string) error {
-	fmt.Fprintln(OutputStream, completion.Bash)
-	return nil
+	testutils.AssertStringEqual(t, got.String(), completion.Bash+"\n")
 }

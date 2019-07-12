@@ -50,7 +50,7 @@ help:
 build: dependencies
 	export GOOS=$(HOST_OS) ;\
 	export GOARCH=$(HOST_ARCH) ;\
-	go build $(LDFLAGS) cmd/cordctl.go
+	go build $(LDFLAGS) cmd/cordctl/cordctl.go
 
 dependencies:
 	[ -d "vendor" ] || dep ensure
@@ -91,7 +91,7 @@ rel_arch  = $(word 3, $(subst -, ,$(notdir $@)))
 $(RELEASE_BINS): dependencies
 	export GOOS=$(rel_os) ;\
 	export GOARCH=$(rel_arch) ;\
-	go build -v $(LDFLAGS) -o "$@" cmd/cordctl.go
+	go build -v $(LDFLAGS) -o "$@" cmd/cordctl/cordctl.go
 
 release: $(RELEASE_BINS)
 

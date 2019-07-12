@@ -19,7 +19,7 @@ package commands
 import (
 	"context"
 	flags "github.com/jessevdk/go-flags"
-	corderrors "github.com/opencord/cordctl/error"
+	corderrors "github.com/opencord/cordctl/internal/pkg/error"
 	"time"
 )
 

@@ -19,8 +19,8 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/opencord/cordctl/format"
-	"github.com/opencord/cordctl/order"
+	"github.com/opencord/cordctl/pkg/format"
+	"github.com/opencord/cordctl/pkg/order"
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v2"
 	"io"

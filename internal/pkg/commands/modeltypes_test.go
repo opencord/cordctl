@@ -18,7 +18,7 @@ package commands
 
 import (
 	"bytes"
-	"github.com/opencord/cordctl/testutils"
+	"github.com/opencord/cordctl/pkg/testutils"
 	"testing"
 )
 

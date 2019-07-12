@@ -18,22 +18,33 @@ package commands
 
 import (
 	"bytes"
-	"github.com/opencord/cordctl/completion"
-	"github.com/opencord/cordctl/testutils"
+	"github.com/opencord/cordctl/pkg/testutils"
 	"testing"
 )
 
-func TestCompletion(t *testing.T) {
+func TestStatusList(t *testing.T) {
+	// use `python -m json.tool` to pretty-print json
+	expected := `[
+		{
+			"Component": "Database",
+			"Connection": "xos-db:5432",
+			"Name": "xos",
+			"Status": "OPERATIONAL",
+			"Version": "10.3"
+		}
+	]`
+
 	got := new(bytes.Buffer)
 	OutputStream = got
 
-	var options CompletionOptions
-	err := options.Execute([]string{})
+	var options StatusOpts
+	options.List.OutputAs = "json"
+	err := options.List.Execute([]string{})
 
 	if err != nil {
 		t.Errorf("%s: Received error %v", t.Name(), err)
 		return
 	}
 
-	testutils.AssertStringEqual(t, got.String(), completion.Bash+"\n")
+	testutils.AssertJSONEqual(t, got.String(), expected)
 }

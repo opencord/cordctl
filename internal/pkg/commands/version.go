@@ -18,8 +18,8 @@ package commands
 
 import (
 	flags "github.com/jessevdk/go-flags"
-	"github.com/opencord/cordctl/cli/version"
-	"github.com/opencord/cordctl/format"
+	"github.com/opencord/cordctl/internal/pkg/cli/version"
+	"github.com/opencord/cordctl/pkg/format"
 )
 
 type VersionDetails struct {
