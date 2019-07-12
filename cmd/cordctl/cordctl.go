@@ -19,8 +19,8 @@ package main
 import (
 	"fmt"
 	flags "github.com/jessevdk/go-flags"
-	"github.com/opencord/cordctl/commands"
-	corderrors "github.com/opencord/cordctl/error"
+	"github.com/opencord/cordctl/internal/pkg/commands"
+	corderrors "github.com/opencord/cordctl/internal/pkg/error"
 	"os"
 	"path"
 )

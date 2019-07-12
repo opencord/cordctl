@@ -23,7 +23,7 @@ import (
 	versionUtils "github.com/hashicorp/go-version"
 	"github.com/jhump/protoreflect/dynamic"
 	"github.com/jhump/protoreflect/grpcreflect"
-	corderrors "github.com/opencord/cordctl/error"
+	corderrors "github.com/opencord/cordctl/internal/pkg/error"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	reflectpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"

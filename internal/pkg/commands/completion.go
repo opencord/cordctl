@@ -1,6 +1,5 @@
 /*
- * Portions copyright 2019-present Open Networking Foundation
- * Original copyright 2019-present Ciena Corporation
+ * Copyright 2019-present Ciena Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,18 +17,21 @@ package commands
 
 import (
 	"fmt"
-	"github.com/opencord/cordctl/testutils"
-	"os"
-	"testing"
+	flags "github.com/jessevdk/go-flags"
+	"github.com/opencord/cordctl/internal/pkg/completion"
 )
 
-// This TestMain is global to all tests in the `commands` package
+type BashOptions struct{}
 
-func TestMain(m *testing.M) {
-	err := testutils.StartMockServer("data.json")
-	if err != nil {
-		fmt.Printf("Error when initializing mock server %v", err)
-		os.Exit(-1)
-	}
-	os.Exit(m.Run())
+type CompletionOptions struct {
+	BashOptions `command:"bash"`
+}
+
+func RegisterCompletionCommands(parent *flags.Parser) {
+	parent.AddCommand("completion", "generate shell compleition", "Commands to generate shell completion information", &CompletionOptions{})
+}
+
+func (options *BashOptions) Execute(args []string) error {
+	fmt.Fprintln(OutputStream, completion.Bash)
+	return nil
 }
