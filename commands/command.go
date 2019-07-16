@@ -29,6 +29,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"net"
 )
 
 type OutputType uint8
@@ -190,6 +191,12 @@ func ProcessGlobalOptions() {
 	}
 	if GlobalConfig.Password == "" {
 		log.Fatal("Password is not set. Please update config file or use the -p option")
+	}
+	//Try to resolve hostname if provided for the server
+	if host, port, err := net.SplitHostPort(GlobalConfig.Server); err == nil {
+		if addrs, err := net.LookupHost(host); err == nil {
+			GlobalConfig.Server = net.JoinHostPort(addrs[0], port)
+		}
 	}
 }
 
