@@ -49,7 +49,7 @@ func (options *StatusListOpts) Execute(args []string) error {
 	}
 	defer conn.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+	ctx, cancel := GrpcTimeoutContext(context.Background())
 	defer cancel()
 
 	headers := GenerateHeaders()

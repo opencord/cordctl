@@ -19,6 +19,7 @@ package commands
 import (
 	"fmt"
 	flags "github.com/jessevdk/go-flags"
+	"github.com/opencord/cordctl/internal/pkg/config"
 	"gopkg.in/yaml.v2"
 )
 
@@ -49,8 +50,8 @@ func RegisterConfigCommands(parent *flags.Parser) {
 
 func (options *ConfigOptions) Execute(args []string) error {
 	//GlobalConfig
-	ProcessGlobalOptions()
-	b, err := yaml.Marshal(GlobalConfig)
+	config.ProcessGlobalOptions()
+	b, err := yaml.Marshal(config.GlobalConfig)
 	if err != nil {
 		return err
 	}
