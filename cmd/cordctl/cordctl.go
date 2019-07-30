@@ -20,6 +20,7 @@ import (
 	"fmt"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/opencord/cordctl/internal/pkg/commands"
+	"github.com/opencord/cordctl/internal/pkg/config"
 	corderrors "github.com/opencord/cordctl/internal/pkg/error"
 	"os"
 	"path"
@@ -29,7 +30,7 @@ func main() {
 
 	parser := flags.NewNamedParser(path.Base(os.Args[0]),
 		flags.HelpFlag|flags.PassDoubleDash|flags.PassAfterNonOption)
-	_, err := parser.AddGroup("Global Options", "", &commands.GlobalOptions)
+	_, err := parser.AddGroup("Global Options", "", &config.GlobalOptions)
 	if err != nil {
 		panic(err)
 	}
@@ -56,7 +57,7 @@ func main() {
 
 		corderror, ok := err.(corderrors.CordCtlError)
 		if ok {
-			if corderror.ShouldDumpStack() || commands.GlobalOptions.Debug {
+			if corderror.ShouldDumpStack() || config.GlobalOptions.Debug {
 				os.Stderr.WriteString("\n" + corderror.Stack())
 			}
 		}

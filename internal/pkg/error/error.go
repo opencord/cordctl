@@ -49,6 +49,7 @@ import (
 	"bytes"
 	"fmt"
 	go_errors "github.com/go-errors/errors"
+	"github.com/opencord/cordctl/internal/pkg/config"
 	"google.golang.org/grpc/status"
 	"runtime"
 	"strings"
@@ -329,6 +330,15 @@ func (f PermissionDeniedError) Error() string {
 	return fmt.Sprintf("Permission Denied%s. Please verify username and password are correct", f.Obj.Clause())
 }
 
+// Unavailable
+type UnavailableError struct {
+	UserError
+}
+
+func (f UnavailableError) Error() string {
+	return fmt.Sprintf("Server Unavailable%s. Please verify server settings (%s). If correct, this may be a transient failure -- please try again", f.Obj.Clause(), config.GlobalConfig.Server)
+}
+
 // InvalidInputError is a catch-all for user mistakes that aren't covered elsewhere
 type InvalidInputError struct {
 	UserError
@@ -402,6 +412,12 @@ func RpcErrorWithObjToCordError(err error, obj ObjectReference) error {
 			cordErr.Encapsulated = err
 			cordErr.AddStackTrace(2)
 			return cordErr
+		case "Unavailable":
+			cordErr := &UnavailableError{}
+			cordErr.Obj = obj
+			cordErr.Encapsulated = err
+			cordErr.AddStackTrace(2)
+			return cordErr
 		case "Unknown":
 			msg := st.Message()
 			if strings.HasPrefix(msg, "Exception calling application: ") {
@@ -413,6 +429,14 @@ func RpcErrorWithObjToCordError(err error, obj ObjectReference) error {
 			cordErr.AddStackTrace(2)
 			return cordErr
 		}
+		// Errors encapsulated by grpCurl
+	} else if strings.Contains(err.Error(), "failed to query for service descriptor") &&
+		strings.Contains(err.Error(), "Unavailable") {
+		cordErr := &UnavailableError{}
+		cordErr.Obj = obj
+		cordErr.Encapsulated = err
+		cordErr.AddStackTrace(2)
+		return cordErr
 	}
 
 	return err

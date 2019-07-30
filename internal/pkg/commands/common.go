@@ -23,6 +23,7 @@ import (
 	versionUtils "github.com/hashicorp/go-version"
 	"github.com/jhump/protoreflect/dynamic"
 	"github.com/jhump/protoreflect/grpcreflect"
+	"github.com/opencord/cordctl/internal/pkg/config"
 	corderrors "github.com/opencord/cordctl/internal/pkg/error"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -39,8 +40,8 @@ const (
 )
 
 func GenerateHeaders() []string {
-	username := GlobalConfig.Username
-	password := GlobalConfig.Password
+	username := config.GlobalConfig.Username
+	password := config.GlobalConfig.Password
 	sEnc := b64.StdEncoding.EncodeToString([]byte(username + ":" + password))
 	headers := []string{"authorization: basic " + sEnc}
 	return headers
@@ -48,7 +49,7 @@ func GenerateHeaders() []string {
 
 // Perform the GetVersion API call on the core to get the version
 func GetVersion(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource) (*dynamic.Message, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+	ctx, cancel := GrpcTimeoutContext(context.Background())
 	defer cancel()
 
 	headers := GenerateHeaders()
@@ -87,8 +88,8 @@ func InitClient(flags uint32) (*grpc.ClientConn, grpcurl.DescriptorSource, error
 	// support the reflection API.
 
 	var descriptor grpcurl.DescriptorSource
-	if GlobalConfig.Protoset != "" {
-		descriptor, err = grpcurl.DescriptorSourceFromProtoSets(GlobalConfig.Protoset)
+	if config.GlobalConfig.Protoset != "" {
+		descriptor, err = grpcurl.DescriptorSourceFromProtoSets(config.GlobalConfig.Protoset)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -142,7 +143,7 @@ func conditional_printf(visible bool, format string, args ...interface{}) {
 
 // Print a confirmation prompt and get a response from the user
 func Confirmf(format string, args ...interface{}) bool {
-	if GlobalOptions.Yes {
+	if config.GlobalOptions.Yes {
 		return true
 	}
 
@@ -165,4 +166,9 @@ func Confirmf(format string, args ...interface{}) bool {
 			return false
 		}
 	}
+}
+
+// Returns a context used for gRPC timeouts
+func GrpcTimeoutContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, config.GlobalConfig.Grpc.Timeout)
 }

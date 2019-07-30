@@ -261,7 +261,7 @@ func CheckModelName(source grpcurl.DescriptorSource, name string) error {
 
 // Create a model in XOS given a map of fields
 func CreateModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, fields map[string]interface{}) error {
-	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+	ctx, cancel := GrpcTimeoutContext(context.Background())
 	defer cancel()
 
 	headers := GenerateHeaders()
@@ -292,7 +292,7 @@ func CreateModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, mod
 
 // Update a model in XOS given a map of fields
 func UpdateModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, fields map[string]interface{}) error {
-	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+	ctx, cancel := GrpcTimeoutContext(context.Background())
 	defer cancel()
 
 	headers := GenerateHeaders()
@@ -320,7 +320,7 @@ func UpdateModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, mod
 
 // Get a model from XOS given its ID
 func GetModel(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, id int32) (*dynamic.Message, error) {
-	ctx, cancel := context.WithTimeout(ctx, GlobalConfig.Grpc.Timeout)
+	ctx, cancel := GrpcTimeoutContext(context.Background())
 	defer cancel()
 
 	headers := GenerateHeaders()
@@ -432,7 +432,7 @@ func ItemsToDynamicMessageList(items interface{}) []*dynamic.Message {
 
 // List all objects of a given model
 func ListModels(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string) ([]*dynamic.Message, error) {
-	ctx, cancel := context.WithTimeout(ctx, GlobalConfig.Grpc.Timeout)
+	ctx, cancel := GrpcTimeoutContext(context.Background())
 	defer cancel()
 
 	headers := GenerateHeaders()
@@ -465,7 +465,7 @@ func ListModels(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.D
 //   For example,
 //     map[string]string{"name": "==mysite"}
 func FilterModels(ctx context.Context, conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, kind string, queries map[string]string) ([]*dynamic.Message, error) {
-	ctx, cancel := context.WithTimeout(ctx, GlobalConfig.Grpc.Timeout)
+	ctx, cancel := GrpcTimeoutContext(context.Background())
 	defer cancel()
 
 	headers := GenerateHeaders()
@@ -613,7 +613,7 @@ func FindModelWithRetry(ctx context.Context, conn *grpc.ClientConn, descriptor g
 
 // Get a model from XOS given its ID
 func DeleteModel(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, modelName string, id int32) error {
-	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+	ctx, cancel := GrpcTimeoutContext(context.Background())
 	defer cancel()
 
 	headers := GenerateHeaders()

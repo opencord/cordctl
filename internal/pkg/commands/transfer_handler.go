@@ -102,7 +102,7 @@ func (h *UploadHandler) GetChecksum() string {
 }
 
 func UploadFile(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, local_name string, uri string, chunkSize int) (*UploadHandler, *dynamic.Message, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+	ctx, cancel := GrpcTimeoutContext(context.Background())
 	defer cancel()
 
 	headers := GenerateHeaders()
@@ -133,7 +133,7 @@ func UploadFile(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, loca
 }
 
 func DownloadFile(conn *grpc.ClientConn, descriptor grpcurl.DescriptorSource, uri string, local_name string) (*DownloadHandler, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), GlobalConfig.Grpc.Timeout)
+	ctx, cancel := GrpcTimeoutContext(context.Background())
 	defer cancel()
 
 	headers := GenerateHeaders()
