@@ -94,13 +94,23 @@ The basic syntax for listing models (`cordctl model list <modelName>`) will list
 cordctl model list Slice --filter "id>10, controller_kind=Deployment"
 ```
 
-Supported operators in the filters include `=`, `!=`, `>`, `<`, `>=`, `<=`.
+Supported operators in the filters include `=`, `!=`, `>`, `<`, `>=`, `<=`, `~=`, and `[=`.
 
 The core also permits models to be filtered based on state, and the `--state` argument can be used to filter based on a state. States include `all`, `dirty`, `deleted`, `dirtypol`, and `deletedpol`. `default` is a synonym for `all`. For example,
 
 ```bash
 # List deleted ONOSApps
 cordctl model list ONOSApp --state deleted
+```
+
+The `~=` operator is a regular expression search, and the `[=` operator is a substring search. For example,
+
+```bash
+# List slices that match the regular expression .*-operator
+./cordctl model list Slice --filter "name~=.*-operator"
+
+# List slices that contain the substring etcd
+./cordctl model list Slice --filter name[=etcd
 ```
 
 ### Updating models

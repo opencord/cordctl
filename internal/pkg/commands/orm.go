@@ -66,6 +66,10 @@ func DecodeOperator(query string) (string, string, bool, error) {
 		return strings.TrimSpace(query[2:]), "EQUAL", true, nil
 	} else if strings.HasPrefix(query, "==") {
 		return "", "", false, corderrors.NewInvalidInputError("Operator == is now allowed. Suggest using = instead.")
+	} else if strings.HasPrefix(query, "~=") {
+		return strings.TrimSpace(query[2:]), "REGEX", false, nil
+	} else if strings.HasPrefix(query, "[=") {
+		return strings.TrimSpace(query[2:]), "CONTAINS", false, nil
 	} else if strings.HasPrefix(query, "=") {
 		return strings.TrimSpace(query[1:]), "EQUAL", false, nil
 	} else if strings.HasPrefix(query, ">=") {
@@ -156,7 +160,7 @@ func QueryStringsToMap(query_args []string, allow_inequality bool) (map[string]s
 		operator_pos := -1
 		for i, ch := range query_str {
 			if allow_inequality {
-				if (ch == '!') || (ch == '=') || (ch == '>') || (ch == '<') {
+				if (ch == '!') || (ch == '=') || (ch == '>') || (ch == '<') || (ch == '~') || (ch == '[') {
 					operator_pos = i
 					break
 				}
