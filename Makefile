@@ -45,22 +45,42 @@ TEST_SERVER = localhost:50051
 TEST_USERNAME = admin@opencord.org
 TEST_PASSWORD = letmein
 
-help:
+# Default is GO111MODULE=auto, which will refuse to use go mod if running
+# go less than 1.13.0 and this repository is checked out in GOPATH. For now,
+# force module usage. This affects commands executed from this Makefile, but
+# not the environment inside the Docker build (which does not build from
+# inside a GOPATH).
+export GO111MODULE=on
 
-build: dependencies
+help:
+	@echo "release      - build binaries using cross compliing for the support architectures"
+	@echo "build        - build the binary as a local executable"
+	@echo "install      - build and install the binary into \$$GOPATH/bin"
+	@echo "run          - runs cordctl using the command specified as \$$CMD"
+	@echo "lint         - run static code analysis"
+	@echo "test         - run unity tests"
+	@echo "clean        - remove temporary and generated files"
+
+build:
 	export GOOS=$(HOST_OS) ;\
 	export GOARCH=$(HOST_ARCH) ;\
 	go build $(LDFLAGS) cmd/cordctl/cordctl.go
 
-dependencies:
-	[ -d "vendor" ] || dep ensure
+install:
+	export GOOS=$(HOST_OS) ;\
+	export GOARCH=$(HOST_ARCH) ;\
+	go install -mod=vendor $(LDFLAGS) cmd/cordctl/cordctl.go
 
-lint: dependencies
+run:
+	export GOOS=$(HOST_OS) ;\
+	export GOARCH=$(HOST_ARCH) ;\
+	go run -mod=vendor $(LDFLAGS) cmd/cordctl/cordctl.go $(CMD)
+
+lint:
 	find $(GOPATH)/src/github.com/opencord/cordctl -name "*.go" -not -path '$(GOPATH)/src/github.com/opencord/cordctl/vendor/*' | xargs gofmt -l
-	go vet ./...
-	dep check
+	go vet -mod=vendor ./...
 
-test: dependencies
+test:
 	@mkdir -p ./tests/results
 	@set +e; \
 	CORDCTL_PROTOSET=$(TEST_PROTOSET)\
@@ -68,7 +88,7 @@ test: dependencies
          CORDCTL_MOCK_DIR=$(TEST_MOCK_DIR) \
          CORDCTL_USERNAME=$(TEST_USERNAME) \
          CORDCTL_PASSWORD=$(TEST_PASSWORD) \
-         go test -v -coverprofile ./tests/results/go-test-coverage.out -covermode count ./... 2>&1 | tee ./tests/results/go-test-results.out ;\
+         go test -mod=vendor -v -coverprofile ./tests/results/go-test-coverage.out -covermode count ./... 2>&1 | tee ./tests/results/go-test-results.out ;\
 	RETURN=$$? ;\
 	go-junit-report < ./tests/results/go-test-results.out > ./tests/results/go-test-results.xml ;\
 	gocover-cobertura < ./tests/results/go-test-coverage.out > ./tests/results/go-test-coverage.xml ;\
@@ -88,10 +108,10 @@ RELEASE_BINS    := $(foreach rel,$(RELEASE_OS_ARCH),$(RELEASE_DIR)/$(RELEASE_NAM
 rel_os    = $(word 2, $(subst -, ,$(notdir $@)))
 rel_arch  = $(word 3, $(subst -, ,$(notdir $@)))
 
-$(RELEASE_BINS): dependencies
+$(RELEASE_BINS):
 	export GOOS=$(rel_os) ;\
 	export GOARCH=$(rel_arch) ;\
-	go build -v $(LDFLAGS) -o "$@" cmd/cordctl/cordctl.go
+	go build -mod=vendor -v $(LDFLAGS) -o "$@" cmd/cordctl/cordctl.go
 
 release: $(RELEASE_BINS)
 
