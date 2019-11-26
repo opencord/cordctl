@@ -76,9 +76,39 @@ run:
 	export GOARCH=$(HOST_ARCH) ;\
 	go run -mod=vendor $(LDFLAGS) cmd/cordctl/cordctl.go $(CMD)
 
-lint:
-	find $(GOPATH)/src/github.com/opencord/cordctl -name "*.go" -not -path '$(GOPATH)/src/github.com/opencord/cordctl/vendor/*' | xargs gofmt -l
-	go vet -mod=vendor ./...
+lint-style:
+ifeq (,$(shell which gofmt))
+	go get -u github.com/golang/go/src/cmd/gofmt
+endif
+	@echo -n "Running style check ... "
+	@gofmt_out="$$(gofmt -l $$(find . -name '*.go' -not -path './vendor/*'))" ;\
+	if [ ! -z "$$gofmt_out" ]; then \
+	  echo "$$gofmt_out" ;\
+	  echo "Style check failed on one or more files ^, run 'go fmt' to fix." ;\
+	  exit 1 ;\
+        fi
+	@echo "OK"
+
+lint-sanity:
+	@echo -n "Running sanity check ... "
+	@go vet -mod=vendor ./...
+	@echo "OK"
+
+lint-mod:
+	@echo "Running dependency check..."
+	@go mod verify
+	@echo "Dependency check OK. Running vendor check..."
+	@git status > /dev/null
+	@git diff-index --quiet HEAD -- go.mod go.sum vendor || (echo "ERROR: Staged or modified files must be committed before running this test" && echo "`git status`" && exit 1)
+	@[[ `git ls-files --exclude-standard --others go.mod go.sum vendor` == "" ]] || (echo "ERROR: Untracked files must be cleaned up before running this test" && echo "`git status`" && exit 1)
+	go mod tidy
+	go mod vendor
+	@git status > /dev/null
+	@git diff-index --quiet HEAD -- go.mod go.sum vendor || (echo "ERROR: Modified files detected after running go mod tidy / go mod vendor" && echo "`git status`" && exit 1)
+	@[[ `git ls-files --exclude-standard --others go.mod go.sum vendor` == "" ]] || (echo "ERROR: Untracked files detected after running go mod tidy / go mod vendor" && echo "`git status`" && exit 1)
+	@echo "Vendor check OK."
+
+lint: lint-style lint-sanity lint-mod
 
 test:
 	@mkdir -p ./tests/results
