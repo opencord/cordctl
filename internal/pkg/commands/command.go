@@ -37,7 +37,7 @@ const (
 	OUTPUT_JSON
 	OUTPUT_YAML
 
-	CORE_VERSION_CONSTRAINT = ">= 3, < 4" // Support XOS major version 3
+	CORE_VERSION_CONSTRAINT = ">= 4, < 5" // Support XOS major version 4
 )
 
 // Make it easy to override output stream for testing
