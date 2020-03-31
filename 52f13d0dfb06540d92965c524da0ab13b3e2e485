@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "a5cb0c99_97f5cc35",
+        "filename": "internal/pkg/commands/command.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 1000461
+      },
+      "writtenOn": "2020-03-31T08:15:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d503c3b0_5ec02f27",
+      "range": {
+        "startLine": 40,
+        "startChar": 42,
+        "endLine": 40,
+        "endChar": 69
+      },
+      "revId": "52f13d0dfb06540d92965c524da0ab13b3e2e485",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8a7b8da0_8540dbbb",
         "filename": "internal/pkg/config/config.go",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2020-03-30T17:59:34Z",
       "side": 1,
       "message": "comment needs an update",
+      "range": {
+        "startLine": 37,
+        "startChar": 42,
+        "endLine": 37,
+        "endChar": 69
+      },
+      "revId": "52f13d0dfb06540d92965c524da0ab13b3e2e485",
+      "serverId": "2a2bfe1b-c5c2-48ed-9ac8-16438ab24388",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a9df49a7_f963cb77",
+        "filename": "internal/pkg/config/config.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 1000461
+      },
+      "writtenOn": "2020-03-31T08:15:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8a7b8da0_8540dbbb",
       "range": {
         "startLine": 37,
         "startChar": 42,
