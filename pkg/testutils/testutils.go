@@ -16,6 +16,7 @@
 package testutils
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,7 +29,6 @@ import (
 
 const (
 	CONTAINER_NAME = "xos-mock-grpc-server"
-	//MOCK_DIR       = "/home/smbaker/projects/gopath/src/github.com/opencord/cordctl/mock"
 )
 
 var MockDir = os.Getenv("CORDCTL_MOCK_DIR")
@@ -43,11 +43,18 @@ func init() {
 //     `data_name` is the name of the data.json to tell the mock server to use.
 //     If a mock server is already running with the same data_name, it is not restarted.
 func StartMockServer(data_name string) error {
+	var stdout, stderr bytes.Buffer
+
 	cmd_str := fmt.Sprintf("cd %s && DATA_JSON=%s docker-compose up -d", MockDir, data_name)
 	cmd := exec.Command("/bin/bash", "-c", cmd_str)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 
 	err := cmd.Run()
 	if err != nil {
+		// something failed... print the stdout and stderr
+		fmt.Printf("stdout=%s\n", stdout.String())
+		fmt.Printf("stderr=%s\n", stderr.String())
 		return err
 	}
 

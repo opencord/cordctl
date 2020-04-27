@@ -18,12 +18,12 @@
 FROM xosproject/grpc-mock:1.0.0 as build
 MAINTAINER Open Networking Foundation
 
-RUN apk add --update git python2 py-pip make
+RUN apk add --update git python3 py-pip make
 
 WORKDIR /xos
 RUN mkdir /xos/v1
 RUN git clone https://github.com/opencord/xos /opt/tmp_xos && mv /opt/tmp_xos/xos /opt/xos && mv /opt/tmp_xos/lib /opt/xos/lib && cp /opt/tmp_xos/VERSION /opt/xos
-RUN cd /opt/xos/lib/xos-genx && python setup.py install
+RUN cd /opt/xos/lib/xos-genx && python3 setup.py install
 RUN cd /opt/xos/coreapi/protos && make rebuild-protos
 
 RUN cp -r /opt/xos/coreapi/protos/*.proto /xos/v1
