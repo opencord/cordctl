@@ -34,7 +34,7 @@ const (
 	OUTPUT_JSON
 	OUTPUT_YAML
 
-	CORE_VERSION_CONSTRAINT = ">= 3, < 4" // Support XOS major version 3
+	CORE_VERSION_CONSTRAINT = ">= 3, < 5" // Support XOS major versions 3 and 4
 )
 
 var CharReplacer = strings.NewReplacer("\\t", "\t", "\\n", "\n")
