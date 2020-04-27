@@ -108,7 +108,7 @@ func InitClient(flags uint32) (*grpc.ClientConn, grpcurl.DescriptorSource, error
 			return nil, nil, err
 		}
 
-		constraint, err := versionUtils.NewConstraint(CORE_VERSION_CONSTRAINT)
+		constraint, err := versionUtils.NewConstraint(config.CORE_VERSION_CONSTRAINT)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -117,7 +117,7 @@ func InitClient(flags uint32) (*grpc.ClientConn, grpcurl.DescriptorSource, error
 			return nil, nil, corderrors.WithStackTrace(&corderrors.VersionConstraintError{
 				Name:       "xos-core",
 				Version:    serverVersion.String(),
-				Constraint: CORE_VERSION_CONSTRAINT})
+				Constraint: config.CORE_VERSION_CONSTRAINT})
 		}
 
 	}

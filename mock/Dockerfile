@@ -18,18 +18,33 @@
 FROM xosproject/grpc-mock:1.0.0 as build
 MAINTAINER Open Networking Foundation
 
-RUN apk add --update git python2 py-pip make
+RUN apk add --update git python3 py-pip make
 
 WORKDIR /xos
 RUN mkdir /xos/v1
 RUN git clone https://github.com/opencord/xos /opt/tmp_xos && mv /opt/tmp_xos/xos /opt/xos && mv /opt/tmp_xos/lib /opt/xos/lib && cp /opt/tmp_xos/VERSION /opt/xos
-RUN cd /opt/xos/lib/xos-genx && python setup.py install
+RUN cd /opt/xos/lib/xos-genx && python3 setup.py install
 RUN cd /opt/xos/coreapi/protos && make rebuild-protos
 
 RUN cp -r /opt/xos/coreapi/protos/*.proto /xos/v1
 
 COPY clean.sh /xos/clean.sh
 RUN /xos/clean.sh
+
+# TODO: Ugly hack to fix xos.proto and utility.proto
+#
+# Something is broken in grpc-mock. It is not processing the import statements
+# in xos.proto or utility.proto that import common.proto and therefore it cannot
+# find the ID and Query messages. Until we understand what is wrong, work around this
+# by stripping off the first four lines of common.proto, and appending it to
+# xos.proto and utility.proto.
+
+WORKDIR /xos/v1
+RUN tail -n +4 common.proto > common.suffix
+RUN mv xos.proto xos.orig && cat xos.orig common.suffix > xos.proto && sed -i '/import.*common.proto/d' xos.proto
+RUN mv utility.proto utility.orig && cat utility.orig common.suffix > utility.proto && sed -i '/import.*common.proto/d' utility.proto
+
+# end Ugly hack to fix xos.proto and utility.proto
 
 FROM xosproject/grpc-mock:1.0.0
 ENV GRPC_MOCK_COMPARE=sparse
